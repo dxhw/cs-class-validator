@@ -1,15 +1,31 @@
 #lang forge/froglet
 
 //setup generics
-sig Boolean {}
+abstract sig Boolean {}
 sig True extends Boolean {}
 
 sig Degree {
     numCourses: one Int
 }
 
+abstract sig Intermediate {}
+one sig FoundationsI, MathematicsI, SystemsI extends Intermediate
+
+abstract sig Pathway {}
+one sig AiMlP, DesignP, SoftwareP, DataP, SecurityP, ComputationalBiologyP, VisualComputingP, 
+        ComputingArchitectureP, TheoryP, SystemsP extends PathwayName
+
+abstract sig PathwayCourseType {}
+one sig CoreT, RelatedT, IntermediateT extends PathwayCourseType
+
 sig Course {
-    prereq: pfunc Course -> Course
+    prereq: pfunc Int -> Course
+    dept: one Department
+    finishIntro: lone Boolean
+    intermediateType: lone Intermediate
+    pathway: pfunc Pathway -> PathwayCourseType
+    upperDiv: lone Boolean
+    artsy: lone Boolean
 }
 
 //old req
@@ -41,7 +57,8 @@ sig oldDegreeSCB extends Degree {
 
 }
 
-sig Pathway {
+sig PathwayRequirements {
+    name: one Pathway
     core1: one Course
     core2: lone Course
     related1: lone Course
