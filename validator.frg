@@ -11,25 +11,25 @@ sig Degree {
 abstract sig Intermediate {}
 one sig FoundationsI, MathematicsI, SystemsI extends Intermediate
 
-abstract sig Pathway {}
+abstract sig PathwayNae {}
 one sig AiMlP, DesignP, SoftwareP, DataP, SecurityP, ComputationalBiologyP, VisualComputingP, 
         ComputingArchitectureP, TheoryP, SystemsP extends PathwayName
 
 abstract sig PathwayCourseType {}
 one sig CoreT, RelatedT, IntermediateT extends PathwayCourseType
 
-sig Course {
-    prereq: pfunc Int -> Course
-    dept: one Department
-    finishIntro: lone Boolean
-    intermediateType: lone Intermediate
-    pathway: pfunc Pathway -> PathwayCourseType
-    upperDiv: lone Boolean
-    artsy: lone Boolean
-}
-
 abstract sig Department {}
 one sig CSCI, MATH extends Department {}
+
+sig Course {
+    prereq: pfunc Int -> Course // c.prereq[0] = some course
+    dept: one Department
+    finishIntro: lone Boolean //19 or 200?
+    intermediateType: lone Intermediate 
+    pathway: pfunc Pathway -> PathwayCourseType
+    upperDiv: lone Boolean //1000+?
+    artsy: lone Boolean //arts hums social sci
+}
 
 //old req
 sig oldDegreeSCB extends Degree { 
@@ -45,7 +45,7 @@ sig oldDegreeSCB extends Degree {
     inter5: one Course
 
     pathway1: one PathwayRequirements
-    pathway2: one Pathway
+    pathway2: one PathwayRequirements
 
     upperDiv: one Course //1000+ cs, not pathway
     elec1: one Course //any
