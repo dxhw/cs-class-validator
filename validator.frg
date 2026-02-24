@@ -2,9 +2,9 @@
 
 //setup generics
 abstract sig Boolean {}
-sig True extends Boolean {}
+one sig True extends Boolean {}
 
-sig Degree {
+abstract sig Degree {
     numCourses: one Int
 }
 
@@ -28,7 +28,10 @@ sig Course {
     intermediateType: lone Intermediate, 
     pathway: pfunc PathwayName -> PathwayCourseType,
     upperDiv: lone Boolean, //1000+?
-    artsy: lone Boolean //arts hums social sci
+    artsy: lone Boolean, //arts hums social sci
+
+    // we probablyyyyy don't want this? It lets us do gimmicky things with counting
+    degree: one Degree
 }
 
 //old req
@@ -190,6 +193,7 @@ pred all_pathways_valid {
             p1.related1.pathway[p1.name] = RelatedT
         }
 
+        // Pathway Intermediates
         // all pathways have at least 1
         p1.intermediate1.pathway[p1.name] = IntermediateT
         // everything but architecture has 2+
@@ -248,15 +252,19 @@ pred valid_upper_level {
 }
 
 pred valid_electives {
-    all d: oldDegreeSCB | {
+    all d: oldDegreeSCB | some disj e1, e2, e3: Course | {
         //("One may be an intermediate course not otherwise used as part of the concentration.
         // The others must be 1000-level")
-        some d.elec1.upperDiv
-        some d.elec2.upperDiv
+        d.elec1 = e1
+        d.elec2 = e2
+        d.elec3 = e3
+
+        some e1.upperDiv
+        some e2.upperDiv
+        // the last elective can be intermediate, so it doesn't need to be upper div
 
         // TODO: we need to check that none of the three electives are used anywhere else in the degree?
-
-        // the last elective can be intermediate, so it doesn't need to be upper div
+        // this makes sure they are all different, but not that they aren't in the rest of the degree
     }
 }
 
@@ -273,6 +281,12 @@ pred wellformed_degree {
     // all d: oldDegreeSCB | {
     //     #{c: Course | c in d} = 15
     // }
+
+    // this is a gimmicky way to make it work because we are making it use exactly 15 courses
+    all c: Course | some d: Degree | {
+        c.degree = d
+    }
+    
     // the num courses thing is not actually doing anything at the moment
 
 
@@ -283,5 +297,5 @@ pred wellformed_degree {
 
 run {
     wellformed_degree
-} for exactly 1 oldDegreeSCB, exactly 2 PathwayRequirements, 15 Course
+} for exactly 1 oldDegreeSCB, exactly 2 PathwayRequirements, exactly 15 Course
 
