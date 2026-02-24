@@ -82,13 +82,20 @@ pred valid_intro_oSCB {
 pred valid_intermediate {
     all d: oldDegreeSCB | {
         //these courses cannot be the same
-        all c1, c2, c3, c4, c5 | (            
+        all disj c1, c2, c3, c4, c5 | (            
             //all of these courses are Intermediates
+            d.inter1 = c1
+            d.inter2 = c2
+            d.inter3 = c3
+            d.inter4 = c4
+            d.inter5 = c5) implies {
+
             c1.intermediateType = Intermediate
             c2.intermediateType = Intermediate
             c3.intermediateType = Intermediate
             c4.intermediateType = Intermediate
-            c5.intermediateType = Intermediate) implies {
+            c5.intermediateType = Intermediate
+
             //these courses are disjoint
             all_inter_disj
 
@@ -104,8 +111,10 @@ pred all_inter_disj {
     //for all degrees...
     all d: oldDegreeSCB | {
         //for all courses...
-        all c1, c2, c3, c4, c5 | (   
-            //such that all of these courses are intermediates         
+        all disj c1, c2, c3, c4, c5 | (   
+            //such that all of these courses are intermediates   
+
+            //TODO: these courses must be in the course      
             c1.intermediateType = Intermediate
             c2.intermediateType = Intermediate
             c3.intermediateType = Intermediate
