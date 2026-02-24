@@ -1,12 +1,14 @@
 #lang forge/froglet
+/* froglet is the WRONG language for this model, since the degree model as written
+* explicitly uses sets, but it's fun to have a challenge!
+*/
 
-//setup generics
+//Set up generics
 abstract sig Boolean {}
 one sig True extends Boolean {}
 
-abstract sig Degree {
-    numCourses: one Int
-}
+//Set up model abstracts and labels
+abstract sig Degree {}
 
 abstract sig Intermediate {}
 one sig FoundationsI, MathematicsI, SystemsI extends Intermediate {}
@@ -19,69 +21,74 @@ abstract sig PathwayCourseType {}
 one sig CoreT, RelatedT, IntermediateT extends PathwayCourseType {}
 
 abstract sig Department {}
-one sig CSCI, MATH extends Department {}
+//We could add more departments here, but the main issue for the model is CSCI/not CSCI
+one sig CSCI, MATH extends Department {} 
 
+//Set up model constructs
 sig Course {
     // prereq: pfunc Int -> Course, // c.prereq[0] = some course
-    prereq: lone Course,
-    dept: one Department,
-    finishIntro: lone Boolean, //19 or 200?
-    intermediateType: lone Intermediate, 
-    pathway: pfunc PathwayName -> PathwayCourseType,
-    upperDiv: lone Boolean, //1000+?
-    artsy: lone Boolean, //arts hums social sci
+    prereq: lone Course, // this is not realistic, but this allows for reachability in a way that's useful
+    dept: one Department, //CSCI, MATH, ...
+    finishIntro: lone Boolean, //Tells us if this course is 0190 or 0200
+    intermediateType: lone Intermediate, //Is this course an intermediate of some type?
+    pathway: pfunc PathwayName -> PathwayCourseType, //Given some pathway, where does this course live in the pathway?
+    upperDiv: lone Boolean, //Is this course 1000+?
+    artsy: lone Boolean, //Is this course arts/humanities/social sciences?
 
-    // we probablyyyyy don't want this? It lets us do gimmicky things with counting
+    //This is circular but it lets us do gimmicky things with counting
     degree: one Degree
 }
 
-//old req
+//List the courses in the old SCB requirements
 sig oldDegreeSCB extends Degree { 
-    calc: one Boolean,
+    calc: one Boolean, //Technically just a checkoff; this doesn't require a course
     
-    intro1: one Course, //can be any CS
-    intro2: one Course, //0190 or 200
+    intro1: one Course, //This can be any CS course!
+    intro2: one Course, //0190 or 0200, must complete the intro sequence.
 
-    inter1: one Course,
-    inter2: one Course,
-    inter3: one Course,
-    inter4: one Course,
-    inter5: one Course,
+    inter1: one Course, //Any intermediate CS course 
+    inter2: one Course, //Any intermediate CS course
+    inter3: one Course, //Intermediate Systems CS course
+    inter4: one Course, //Intermediate Mathematics CS course
+    inter5: one Course, //Intermediate Foundations CS course
 
-    pathway1: one PathwayRequirements,
-    pathway2: one PathwayRequirements,
+    pathway1: one PathwayRequirements, //Any pathway
+    pathway2: one PathwayRequirements, //Any pathway
 
-    upperLevel: one Course, //1000+ cs, not pathway
-    elec1: one Course, //any
-    elec2: one Course, //any
-    elec3: one Course //any
+    upperLevel: one Course, //Any 1000+ CSCI course not in a pathway
+    elec1: one Course, //Any course
+    elec2: one Course, //Any upper-div course
+    elec3: one Course //Any upper-div course
 }
 
 sig PathwayRequirements {
-    name: one PathwayName,
-    core1: one Course,
-    core2: lone Course,
-    related1: lone Course,
-    intermediate1: one Course,
-    intermediate2: lone Course,
+    name: one PathwayName, //Indicates what pathway this is
+    core1: one Course, //Every pathway has at least 1 core course (no dept)
+    core2: lone Course, 
+    related1: lone Course, //Courses might have "related" courses that help fill upper-div requirements
+    intermediate1: one Course, //Every pathway has at least 1 intermediate course (no dept)
+    intermediate2: lone Course, //...and sometimes more!
     intermediate3: lone Course
 }
 
 pred wellformed_course {
     all c: Course | {
-        // TODO: need to figure out how to rewrite this since it isn't just going through
-        // linked list, it is a function
+        //A course cannot be a prereq of itself
         not reachable[c, c, prereq]
 
-        // no course is both an intermediate and a core/related course for a pathway
+        //No course is both an intermediate course and a core/related course for a pathway
         some c.intermediateType implies {
             all pn: PathwayName | {
                 no c.pathway[pn] or c.pathway[pn] = IntermediateT
             }
         }
+
+        //Courses cannot finish the intro and be an intermediate
+        some c.finishIntro implies no c.intermediateType 
     }
 }
 
+//Calc requirement returns True
 pred finished_calc {
     all d: oldDegreeSCB | {
         some d.calc
@@ -90,34 +97,36 @@ pred finished_calc {
 
 pred valid_intro_oSCB {
     all d: oldDegreeSCB | {
-        //intro 1 and 2 are disj
+        //Intro 1 and 2 are disjoint
         d.intro1 != d.intro2
-        //both cs courses
+        //Both are CSCI courses
         d.intro1.dept = CSCI
         d.intro2.dept = CSCI
-        //intro 2 is 19 or 200 (finished intro seq)
+        //Intro 2 is 0190 or 200 (finishing the intro seq)
         some d.intro2.finishIntro
     }
 }
 
 pred valid_intermediate {
+    //For all degrees...
     all d: oldDegreeSCB | {
-        //these courses cannot be the same
+        //intermediate courses cannot be the same,
         some disj c1, c2, c3, c4, c5: Course | {       
-            //all of these courses are in the degree
+            //all of these courses are in the degree,
             d.inter1 = c1 and
             d.inter2 = c2 and
             d.inter3 = c3 and
             d.inter4 = c4 and
             d.inter5 = c5
 
+            //all of these courses are intermediates,
             some c1.intermediateType
             some c2.intermediateType
             some c3.intermediateType
             some c4.intermediateType
             some c5.intermediateType
 
-            //we only care that 3 of the courses are distributed across categories
+            //3 of these courses are distributed across the categories.
             c1.intermediateType = FoundationsI
             c2.intermediateType = MathematicsI
             c3.intermediateType = SystemsI
@@ -128,10 +137,11 @@ pred valid_intermediate {
 pred distinct_pathways {
     all d: oldDegreeSCB | {
         //comparing pathways...
-        //the two pathways are distinct
+        //The two pathways are distinct,
         d.pathway1.name != d.pathway2.name
 
         //the two pathways cannot share a core or related course
+        //(but no restrictions on intermediates!)
         d.pathway1.core1 != d.pathway2.core1
         d.pathway1.core1 != d.pathway2.core2
         d.pathway1.core1 != d.pathway2.related1
@@ -148,7 +158,7 @@ pred distinct_pathways {
 
 pred all_pathways_valid {
     all p1: PathwayRequirements | {
-        // all the pathway requirements fit their required buckets for the pathway name
+        // All the pathway requirements fit their required buckets for the pathway name
         
         // Must have at least one core
         p1.core1.pathway[p1.name] = CoreT
@@ -206,6 +216,7 @@ pred all_pathways_valid {
 
 }
 
+//Roll pathway checks into one pred
 pred valid_two_pathways {
     distinct_pathways
     all_pathways_valid
@@ -215,16 +226,16 @@ pred valid_two_pathways {
 //neither a core nor a related nor a grad course for the pathways")
 pred valid_upper_level {
     all d: oldDegreeSCB | {
-        // the upper level is in neither of the pathways
+        // The upper level is in neither of the pathways
         no d.upperLevel.pathway[d.pathway1.name]
         no d.upperLevel.pathway[d.pathway2.name]
-        // 1000 or 2000-level CSCI
+        // The course is 1000 or 2000-level CSCI
         some d.upperLevel.upperDiv
         d.upperLevel.dept = CSCI
 
-        // the upper div cannot be anywhere else in the degree ("additional")
+        // The upper div cannot be anywhere else in the degree ("additional")
         all c1: Course |  (
-            //[this is such an awful way to do this but it works?????????] 
+            //[this is such an awful way to do this but it works!] 
             reachable[c1, d, intro1, intro2, inter1, inter2, inter3, inter4, inter5, elec1, elec2, elec3, 
                 pathway1, pathway2, core1, core2, related1, intermediate1, intermediate2, intermediate3]
         ) implies {
@@ -237,11 +248,13 @@ pred valid_electives {
     all d: oldDegreeSCB | some disj e1, e2, e3: Course |  {
         //("One may be an intermediate course not otherwise used as part of the concentration.
         // The others must be 1000-level")
+
+        //These 3 courses are electives in the degree.
         d.elec1 = e1
         d.elec2 = e2
         d.elec3 = e3
 
-        // the electives cannot be anywhere else in the degree.
+        // The electives cannot be anywhere else in the degree.
         all c1: Course |  (
             //[this is such an awful way to do this but it works?????????] 
             reachable[c1, d, intro1, intro2, inter1, inter2, inter3, inter4, inter5, upperLevel, 
@@ -252,16 +265,15 @@ pred valid_electives {
             e3 != c1
         }
 
+        //Two of these courses must be upperDiv
         some e1.upperDiv
         some e2.upperDiv
         // the last elective can be intermediate, so it doesn't need to be upper div
-
-        // TODO: we need to check that none of the three electives are used anywhere else in the degree?
-        // this makes sure they are all different, but not that they aren't in the rest of the degree
     }
 }
 
 pred wellformed_degree {
+    //Put all of the degree checks together
     finished_calc
     wellformed_course
     valid_intro_oSCB
@@ -275,20 +287,16 @@ pred wellformed_degree {
     //     #{c: Course | c in d} = 15
     // }
 
-    // this is a gimmicky way to make it work because we are making it use exactly 15 courses
+    // This is a gimmicky way to make it work because we are making it use exactly X courses
     all c: Course | some d: Degree | {
         c.degree = d
     }
-    
-    // the num courses thing is not actually doing anything at the moment
 
-
-    // no more than 4 artsy
+    //No more than 4 artsy courses
     #{c: Course | some c.artsy} <= 4
 
-    //realistically there can't be more than 2 courses that finish the intro (it's just 190 and 200)
+    //There can't be more than 2 courses that finish the intro (it's just 190 and 200)
     #{c: Course | some c.finishIntro} <= 2
-
 }
 
 run {
