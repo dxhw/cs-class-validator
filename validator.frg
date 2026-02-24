@@ -22,7 +22,8 @@ abstract sig Department {}
 one sig CSCI, MATH extends Department {}
 
 sig Course {
-    prereq: pfunc Int -> Course, // c.prereq[0] = some course
+    // prereq: pfunc Int -> Course, // c.prereq[0] = some course
+    prereq: lone Course,
     dept: one Department,
     finishIntro: lone Boolean, //19 or 200?
     intermediateType: lone Intermediate, 
@@ -68,9 +69,9 @@ sig PathwayRequirements {
 
 pred wellformed_course {
     all c: Course | {
-        // need to figure out how to rewrite this since it isn't just going through
+        // TODO: need to figure out how to rewrite this since it isn't just going through
         // linked list, it is a function
-        // not reachable[c, c, prereq]
+        not reachable[c, c, prereq]
 
         // no course is both an intermediate and a core/related course for a pathway
         some c.intermediateType implies {
@@ -102,60 +103,27 @@ pred valid_intro_oSCB {
 pred valid_intermediate {
     all d: oldDegreeSCB | {
         //these courses cannot be the same
-        all disj c1, c2, c3, c4, c5: Course | {       
-            //all of these courses are Intermediates
-            (d.inter1 = c1 and
+        some disj c1, c2, c3, c4, c5: Course | {       
+            //all of these courses are in the degree
+            d.inter1 = c1 and
             d.inter2 = c2 and
             d.inter3 = c3 and
             d.inter4 = c4 and
-            d.inter5 = c5) implies {
-                some c1.intermediateType
-                some c2.intermediateType
-                some c3.intermediateType
-                some c4.intermediateType
-                some c5.intermediateType
+            d.inter5 = c5
 
-                //we only care that 3 of the courses are distributed across categories
-                c1.intermediateType = FoundationsI
-                c2.intermediateType = MathematicsI
-                c3.intermediateType = SystemsI
-            }
+            some c1.intermediateType
+            some c2.intermediateType
+            some c3.intermediateType
+            some c4.intermediateType
+            some c5.intermediateType
+
+            //we only care that 3 of the courses are distributed across categories
+            c1.intermediateType = FoundationsI
+            c2.intermediateType = MathematicsI
+            c3.intermediateType = SystemsI
         }  
     } 
 }
-
-// we don't need this because we already make sure they are disj?
-// pred all_inter_disj {
-//     //for all degrees...
-//     all d: oldDegreeSCB | {
-//         //for all courses...
-//         all disj c1, c2, c3, c4, c5 | (   
-//             //such that all of these courses are intermediates   
-
-//             //TODO: these courses must be in the course      
-//             c1.intermediateType = Intermediate
-//             c2.intermediateType = Intermediate
-//             c3.intermediateType = Intermediate
-//             c4.intermediateType = Intermediate
-//             c5.intermediateType = Intermediate) implies {
-//                 //[this is annoying BUT it works?]
-//                 //none of these courses are the same.
-//                 c1 != c2
-//                 c1 != c3
-//                 c1 != c4
-//                 c1 != c5
-
-//                 c2 != c3
-//                 c2 != c4
-//                 c2 != c5
-
-//                 c3 != c4
-//                 c3 != c5
-
-//                 c4 != c5
-//             }
-//     }
-// }
 
 pred distinct_pathways {
     all d: oldDegreeSCB | {
@@ -210,7 +178,6 @@ pred all_pathways_valid {
             p1.intermediate3.pathway[p1.name] = IntermediateT
         }
 
-
         //EVERYTHING is disjoint within the pathway
         p1.core1 != p1.core2
         p1.core1 != p1.related1
@@ -231,6 +198,10 @@ pred all_pathways_valid {
         p1.intermediate1 != p1.intermediate3
 
         p1.intermediate2 != p1.intermediate3
+
+        //two of the courses in the pathway must be upper div and not intermediate
+        #{c: Course | some c.upperDiv and (c = p1.core1 or c = p1.core2 or c = p1.related1)} >= 2
+
     }
 
 }
@@ -252,12 +223,23 @@ pred valid_upper_level {
 }
 
 pred valid_electives {
-    all d: oldDegreeSCB | some disj e1, e2, e3: Course | {
+    all d: oldDegreeSCB | some disj e1, e2, e3: Course |  {
         //("One may be an intermediate course not otherwise used as part of the concentration.
         // The others must be 1000-level")
         d.elec1 = e1
         d.elec2 = e2
         d.elec3 = e3
+
+        // the electives cannot be anywhere else in the degree.
+        all c1: Course |  (
+            //[this is such an awful way to do this but it works?????????] 
+            reachable[c1, d, intro1, intro2, inter1, inter2, inter3, inter4, inter5, upperLevel, 
+                pathway1, pathway2, core1, core2, related1, intermediate1, intermediate2, intermediate3]
+        ) implies {
+            e1 != c1 and
+            e2 != c1 and
+            e3 != c1
+        }
 
         some e1.upperDiv
         some e2.upperDiv
@@ -290,12 +272,15 @@ pred wellformed_degree {
     // the num courses thing is not actually doing anything at the moment
 
 
-
     // no more than 4 artsy
     #{c: Course | some c.artsy} <= 4
+
+    //realistically there can't be more than 2 courses that finish the intro (it's just 190 and 200)
+    #{c: Course | some c.finishIntro} <= 2
+
 }
 
 run {
     wellformed_degree
-} for exactly 1 oldDegreeSCB, exactly 2 PathwayRequirements, exactly 15 Course
-
+} for exactly 1 oldDegreeSCB, exactly 2 PathwayRequirements, exactly 12 Course
+//TODO: what is the minimum number of courses that is still sat? nobody knows...
