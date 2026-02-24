@@ -211,6 +211,8 @@ pred valid_two_pathways {
     all_pathways_valid
 }
 
+//("One additional 1000-level (or 2000-level) CSCI course that is 
+//neither a core nor a related nor a grad course for the pathways")
 pred valid_upper_level {
     all d: oldDegreeSCB | {
         // the upper level is in neither of the pathways
@@ -219,6 +221,15 @@ pred valid_upper_level {
         // 1000 or 2000-level CSCI
         some d.upperLevel.upperDiv
         d.upperLevel.dept = CSCI
+
+        // the upper div cannot be anywhere else in the degree ("additional")
+        all c1: Course |  (
+            //[this is such an awful way to do this but it works?????????] 
+            reachable[c1, d, intro1, intro2, inter1, inter2, inter3, inter4, inter5, elec1, elec2, elec3, 
+                pathway1, pathway2, core1, core2, related1, intermediate1, intermediate2, intermediate3]
+        ) implies {
+            d.upperLevel != c1
+        }
     }
 }
 
@@ -282,5 +293,5 @@ pred wellformed_degree {
 
 run {
     wellformed_degree
-} for exactly 1 oldDegreeSCB, exactly 2 PathwayRequirements, exactly 12 Course
+} for exactly 1 oldDegreeSCB, exactly 2 PathwayRequirements, exactly 13 Course
 //TODO: what is the minimum number of courses that is still sat? nobody knows...
