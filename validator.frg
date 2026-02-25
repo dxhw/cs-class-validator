@@ -83,8 +83,23 @@ pred wellformed_course {
             }
         }
 
+        //Finish intro is just 19/200 so:
         //Courses cannot finish the intro and be an intermediate
-        some c.finishIntro implies no c.intermediateType 
+        //Courses cannot finish intro and be upper div
+        //Courses that finish intro are CSCI
+        some c.finishIntro implies {
+            no c.intermediateType 
+            no c.upperDiv
+            c.dept = CSCI
+        }
+
+        // TODO: (this runs too slowly to include)
+        //19 and 200 are never in a pathway
+        // some c.finishIntro implies {
+        //     all pn: PathwayName | {
+        //         no c.pathway[pn]
+        //     }
+        // }
     }
 }
 
@@ -165,7 +180,9 @@ pred all_pathways_valid {
         // all pathways have at least 1
         p1.intermediate1.pathway[p1.name] = IntermediateT
         // everything but architecture has 2+
-        p1.name != ComputingArchitectureP implies {
+        p1.name = ComputingArchitectureP implies {
+            no p1.intermediate2
+        } else {
             some p1.intermediate2
             p1.intermediate2.pathway[p1.name] = IntermediateT
         }
@@ -176,6 +193,8 @@ pred all_pathways_valid {
         p1.name = VisualComputingP) implies {
             some p1.intermediate3
             p1.intermediate3.pathway[p1.name] = IntermediateT
+        } else {
+            no p1.intermediate3
         }
 
         //EVERYTHING is disjoint within the pathway
@@ -261,11 +280,6 @@ pred wellformed_degree {
     valid_two_pathways
     valid_upper_level
     valid_electives
-
-    // TODO: we can't actually write this but we need to 
-    // all d: oldDegreeSCB | {
-    //     #{c: Course | c in d} = 15
-    // }
 
     // This is a gimmicky way to make it work because we are making it use exactly X courses
     all c: Course | some d: Degree | {
