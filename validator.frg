@@ -3,6 +3,11 @@
 * explicitly uses sets, but it's fun to have a challenge!
 */
 
+// This option auto-populates the **FULLY AI GENERATED** Visualization script so it can be used
+// this visualization is NOT the ground truth and should NOT be generally trusted, 
+// it has NOT been human reviewed and it is just for convenience
+option run_sterling "vis.js"
+
 //Set up generics
 abstract sig Boolean {}
 one sig True extends Boolean {}
@@ -83,23 +88,26 @@ pred wellformed_course {
             }
         }
 
+        // if it is not an intermediate, it cannot fulfill an intermediate requirement
+        no c.intermediateType implies {
+            no pn: PathwayName | {
+                c.pathway[pn] = IntermediateT
+            }
+        }
+
         //Finish intro is just 19/200 so:
         //Courses cannot finish the intro and be an intermediate
         //Courses cannot finish intro and be upper div
         //Courses that finish intro are CSCI
+        //19 and 200 are never in a pathway
         some c.finishIntro implies {
             no c.intermediateType 
             no c.upperDiv
             c.dept = CSCI
+            all pn: PathwayName | {
+                no c.pathway[pn]
+            }
         }
-
-        // TODO: (this runs too slowly to include)
-        //19 and 200 are never in a pathway
-        // some c.finishIntro implies {
-        //     all pn: PathwayName | {
-        //         no c.pathway[pn]
-        //     }
-        // }
     }
 }
 
@@ -282,16 +290,17 @@ pred wellformed_degree {
     valid_upper_level
     valid_electives
 
-    // This is a gimmicky way to make it work because we are making it use exactly X courses
+    // This is a gimmicky way to make sure we don't have free-floating courses
     all c: Course | some d: Degree | {
         c.degree = d
     }
 
     //No more than 4 artsy courses
-    #{c: Course | some c.artsy} <= 4
+    // we have an overflow error, so try to lessen it with the >= 0 bound
+    (#{c: Course | some c.artsy} >= 0) and (#{c: Course | some c.artsy} <= 4)
 
     //There can't be more than 2 courses that finish the intro (it's just 190 and 200)
-    #{c: Course | some c.finishIntro} <= 2
+    (#{c: Course | some c.finishIntro} >= 0) and (#{c: Course | some c.finishIntro} <= 2)
 }
 
 run {
@@ -301,4 +310,5 @@ run {
 //  2 intro, 5 intermediate, 4+ pathway (core + core/related X2, possible extra intermediates)
 //  1 upper level, 3 electives
 //  2 + 5 + 4 + 1 + 3 = 15
-// running without specifying exactly 15 will take a LONG time
+// running without specifying EXACTLY 15 (or a couple more) will take a LONG time
+// note that the solver usually takes a bit of time (20+ seconds) to finish even in good conditions
