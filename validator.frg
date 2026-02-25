@@ -119,6 +119,12 @@ pred valid_intro_oSCB {
         d.intro2.dept = CSCI
         //Intro 2 is 0190 or 200 (finishing the intro seq)
         some d.intro2.finishIntro
+
+        // intro courses can't be used for other purposes
+        not reachable[d.intro1, d, inter1, inter2, inter3, inter4, inter5, elec1, elec2, elec3, upperLevel,
+                pathway1, pathway2, core1, coreOrRelated, intermediate1, intermediate2, intermediate3]
+        not reachable[d.intro2, d, inter1, inter2, inter3, inter4, inter5, elec1, elec2, elec3, upperLevel,
+                pathway1, pathway2, core1, coreOrRelated, intermediate1, intermediate2, intermediate3]
     }
 }
 
@@ -233,13 +239,8 @@ pred valid_upper_level {
         d.upperLevel.dept = CSCI
 
         // The upper div cannot be anywhere else in the degree ("additional")
-        all c1: Course |  (
-            //[this is such an awful way to do this but it works!] 
-            reachable[c1, d, intro1, intro2, inter1, inter2, inter3, inter4, inter5, elec1, elec2, elec3, 
+        not reachable[d.upperLevel, d, intro1, intro2, inter1, inter2, inter3, inter4, inter5, elec1, elec2, elec3, 
                 pathway1, pathway2, core1, coreOrRelated, intermediate1, intermediate2, intermediate3]
-        ) implies {
-            d.upperLevel != c1
-        }
     }
 }
 
@@ -295,5 +296,9 @@ pred wellformed_degree {
 
 run {
     wellformed_degree
-} for exactly 1 oldDegreeSCB, exactly 2 PathwayRequirements, exactly 13 Course
-//TODO: what is the minimum number of courses that is still sat? nobody knows...
+} for exactly 1 oldDegreeSCB, exactly 15 Course
+// You must have at least 15 courses:
+//  2 intro, 5 intermediate, 4+ pathway (core + core/related X2, possible extra intermediates)
+//  1 upper level, 3 electives
+//  2 + 5 + 4 + 1 + 3 = 15
+// running without specifying exactly 15 will take a LONG time
