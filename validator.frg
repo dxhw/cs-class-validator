@@ -43,14 +43,14 @@ sig Course {
 sig oldDegreeSCB extends Degree { 
     calc: one Boolean, //Technically just a checkoff; this doesn't require a course
     
-    intro1: one Course, //This can be any CS course!
+    intro1: one Course, //Can be any CS course! Usually 111/15/17, but with 19 as intro2 can be any
     intro2: one Course, //0190 or 0200, must complete the intro sequence.
 
-    inter1: one Course, //Any intermediate CS course 
-    inter2: one Course, //Any intermediate CS course
+    inter1: one Course, //Intermediate Foundations CS course
+    inter2: one Course, //Intermediate Mathematics CS course
     inter3: one Course, //Intermediate Systems CS course
-    inter4: one Course, //Intermediate Mathematics CS course
-    inter5: one Course, //Intermediate Foundations CS course
+    inter4: one Course, //Any intermediate CS course
+    inter5: one Course, //Any intermediate CS course
 
     pathway1: one PathwayRequirements, //Any pathway
     pathway2: one PathwayRequirements, //Any pathway
@@ -64,8 +64,7 @@ sig oldDegreeSCB extends Degree {
 sig PathwayRequirements {
     name: one PathwayName, //Indicates what pathway this is
     core1: one Course, //Every pathway has at least 1 core course (no dept)
-    core2: lone Course, 
-    related1: lone Course, //Courses might have "related" courses that help fill upper-div requirements
+    coreOrRelated: one Course, // Every pathway requires a second course that is either core or "related"
     intermediate1: one Course, //Every pathway has at least 1 intermediate course (no dept)
     intermediate2: lone Course, //...and sometimes more!
     intermediate3: lone Course
@@ -77,6 +76,7 @@ pred wellformed_course {
         not reachable[c, c, prereq]
 
         //No course is both an intermediate course and a core/related course for a pathway
+        //so all intermediates are either not in a pathway or are an intermediate in a pathway
         some c.intermediateType implies {
             all pn: PathwayName | {
                 no c.pathway[pn] or c.pathway[pn] = IntermediateT
@@ -143,16 +143,10 @@ pred distinct_pathways {
         //the two pathways cannot share a core or related course
         //(but no restrictions on intermediates!)
         d.pathway1.core1 != d.pathway2.core1
-        d.pathway1.core1 != d.pathway2.core2
-        d.pathway1.core1 != d.pathway2.related1
+        d.pathway1.core1 != d.pathway2.coreOrRelated
 
-        d.pathway1.core2 != d.pathway2.core1
-        d.pathway1.core2 != d.pathway2.core2
-        d.pathway1.core2 != d.pathway2.related1
-
-        d.pathway1.related1 != d.pathway2.core1
-        d.pathway1.related1 != d.pathway2.core2
-        d.pathway1.related1 != d.pathway2.related1
+        d.pathway1.coreOrRelated != d.pathway2.core1
+        d.pathway1.coreOrRelated != d.pathway2.coreOrRelated
     }
 }
 
@@ -164,12 +158,8 @@ pred all_pathways_valid {
         p1.core1.pathway[p1.name] = CoreT
         
         // Must have either a second core or a related
-        some p1.core2 implies {
-            p1.core2.pathway[p1.name] = CoreT
-        } else {
-            some p1.related1
-            p1.related1.pathway[p1.name] = RelatedT
-        }
+        ((p1.coreOrRelated.pathway[p1.name] = CoreT) or 
+        (p1.coreOrRelated.pathway[p1.name] = RelatedT))
 
         // Pathway Intermediates
         // all pathways have at least 1
@@ -189,29 +179,19 @@ pred all_pathways_valid {
         }
 
         //EVERYTHING is disjoint within the pathway
-        p1.core1 != p1.core2
-        p1.core1 != p1.related1
+        p1.core1 != p1.coreOrRelated
         p1.core1 != p1.intermediate1
         p1.core1 != p1.intermediate2
         p1.core1 != p1.intermediate3
 
-        p1.core2 != p1.related1
-        p1.core2 != p1.intermediate1
-        p1.core2 != p1.intermediate2
-        p1.core2 != p1.intermediate3
-
-        p1.related1 != p1.intermediate1
-        p1.related1 != p1.intermediate2
-        p1.related1 != p1.intermediate3
+        p1.coreOrRelated != p1.intermediate1
+        p1.coreOrRelated != p1.intermediate2
+        p1.coreOrRelated != p1.intermediate3
 
         p1.intermediate1 != p1.intermediate2
         p1.intermediate1 != p1.intermediate3
 
-        p1.intermediate2 != p1.intermediate3
-
-        //two of the courses in the pathway must be upper div and not intermediate
-        #{c: Course | some c.upperDiv and (c = p1.core1 or c = p1.core2 or c = p1.related1)} >= 2
-
+        some p1.intermediate2 implies p1.intermediate2 != p1.intermediate3
     }
 
 }
@@ -237,7 +217,7 @@ pred valid_upper_level {
         all c1: Course |  (
             //[this is such an awful way to do this but it works!] 
             reachable[c1, d, intro1, intro2, inter1, inter2, inter3, inter4, inter5, elec1, elec2, elec3, 
-                pathway1, pathway2, core1, core2, related1, intermediate1, intermediate2, intermediate3]
+                pathway1, pathway2, core1, coreOrRelated, intermediate1, intermediate2, intermediate3]
         ) implies {
             d.upperLevel != c1
         }
@@ -258,7 +238,7 @@ pred valid_electives {
         all c1: Course |  (
             //[this is such an awful way to do this but it works?????????] 
             reachable[c1, d, intro1, intro2, inter1, inter2, inter3, inter4, inter5, upperLevel, 
-                pathway1, pathway2, core1, core2, related1, intermediate1, intermediate2, intermediate3]
+                pathway1, pathway2, core1, coreOrRelated, intermediate1, intermediate2, intermediate3]
         ) implies {
             e1 != c1 and
             e2 != c1 and
