@@ -5,7 +5,7 @@
 
 // This option auto-populates the **FULLY AI GENERATED** Visualization script so it can be used
 // this visualization is NOT the ground truth and should NOT be generally trusted, 
-// it has NOT been human reviewed and it is just for convenience
+// it has NOT been human reviewed and it is just for convenience.
 option run_sterling "vis.js"
 
 //Set up generics
@@ -45,7 +45,7 @@ sig Course {
 }
 
 //List the courses in the old SCB requirements
-sig oldDegreeSCB extends Degree { 
+lone sig oldDegreeSCB extends Degree { 
     calc: one Boolean, //Technically just a checkoff; this doesn't require a course
     
     intro1: one Course, //Can be any CS course! Usually 111/15/17, but with 19 as intro2 can be any
