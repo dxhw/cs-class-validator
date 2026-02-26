@@ -4,17 +4,6 @@ open "validator.frg"
 
 test suite for wellformed_course {
 
-    // prereq: lone Course, // this is not realistic, but this allows for reachability in a way that's useful
-    // dept: one Department, //CSCI, MATH, ...
-    // finishIntro: lone Boolean, //Tells us if this course is 0190 or 0200
-    // intermediateType: lone Intermediate, //Is this course an intermediate of some type?
-    // pathway: pfunc PathwayName -> PathwayCourseType, //Given some pathway, where does this course live in the pathway?
-    // upperDiv: lone Boolean, //Is this course 1000+?
-    // artsy: lone Boolean, //Is this course arts/humanities/social sciences?
-
-    // //This is circular but it lets us do gimmicky things with counting
-    // degree: one Degree
-
     //positive
     //We can exist without courses
     example wc_NoCourse is {wellformed_course} for {
@@ -34,6 +23,7 @@ test suite for wellformed_course {
         `c.degree = `d
     }
 
+    //Minimal inputs for 2 courses
     example wc_TwoCourse is {wellformed_course} for { 
         Boolean = `T
         True = `T
@@ -49,6 +39,7 @@ test suite for wellformed_course {
         `c2.degree = `d
     }
 
+    //Two courses, where one is a prereq of the other
     example wc_TwoCoursePrereq is {wellformed_course} for { 
         Boolean = `T
         True = `T
@@ -66,7 +57,7 @@ test suite for wellformed_course {
     }
 
     //negative
-
+    //A course can't be a prereq of itself
     example wc_SelfPrereq is {not wellformed_course} for { 
         Boolean = `T
         True = `T
@@ -80,6 +71,7 @@ test suite for wellformed_course {
         `c1.prereq = `c1
     }
 
+    //2 courses can't be prereqs of each other
     example wc_CircularPrereq is {not wellformed_course} for { 
         Boolean = `T
         True = `T
@@ -97,7 +89,7 @@ test suite for wellformed_course {
         `c2.prereq = `c1
     }
 
-
+    //We can't have a cycle of prereqs
     example wc_IndirectSelfPrereq is {not wellformed_course} for { 
         Boolean = `T
         True = `T
@@ -120,6 +112,7 @@ test suite for wellformed_course {
         `c3.prereq = `c1
     }
 
+    //We can't have an intermediate course also be a core course
     example wc_notInterAndCore is {not wellformed_course} for {
         Boolean = `T
         True = `T
@@ -158,6 +151,7 @@ test suite for wellformed_course {
         `c.pathway = `SyP -> `CorT
     }
 
+    //We can't have an intermediate course also be a related course
     example wc_notInterAndRelated is {not wellformed_course} for {
         Boolean = `T
         True = `T
@@ -196,6 +190,7 @@ test suite for wellformed_course {
         `c.pathway = `SyP -> `RelT
     }
 
+    //We can't have an intermediate course with no intermediate type
     example wc_notIntermediateNoIntType is {not wellformed_course} for {
         Boolean = `T
         True = `T
@@ -233,6 +228,7 @@ test suite for wellformed_course {
         `c.pathway = `SyP -> `IntT
     }
 
+    //We can't have a course that finishes the intro and is also upper division
     example wc_notFinishIntroUpperDiv is {not wellformed_course} for {
         Boolean = `T
         True = `T
@@ -271,6 +267,7 @@ test suite for wellformed_course {
         `c.upperDiv = `T
     }
 
+    //There's no course that finishes the intro and is an intermediate
     example wc_notFinishIntroIntermediate is {not wellformed_course} for {
         Boolean = `T
         True = `T
@@ -309,6 +306,7 @@ test suite for wellformed_course {
         `c.intermediateType = `FouI
     }
 
+    //There's no course that finishes the intro without being CSCI
     example wc_notFinishIntroNotCS is {not wellformed_course} for {
         Boolean = `T
         True = `T
@@ -346,6 +344,7 @@ test suite for wellformed_course {
         `c.finishIntro = `T
     }
 
+    //There's no course that can finish the intro while being in a pathway
     example wc_notFinishIntroNotPathway is {not wellformed_course} for {
         Boolean = `T
         True = `T
@@ -385,17 +384,18 @@ test suite for wellformed_course {
     }
 
     //asserts
+    //This predicate can run
     wc_sat: assert wellformed_course is sat
-
+    //Courses can't be their own prereq
     wc_noSelfPrereq: assert {some c: Course | {
         c.prereq = c and wellformed_course}} is unsat
-
+    //Courses can't be mutual prereqs
     wc_noCircularPrereq: assert {some disj c1, c2: Course | 
         c1.prereq = c2 and c2.prereq = c1 and wellformed_course} is unsat
-
+    //Courses can't have themselves in their prereq mapping
     wc_noIndirectPrereq: assert {some disj c1, c2, c3: Course | 
         c1.prereq = c2 and c2.prereq = c3 and c3.prereq = c1 and wellformed_course} is unsat
-
+    //Courses can't be core or related courses in pathway if intermediate course
     wc_noCoreOrRelatedIfIntermediate: assert {some c: Course | {
         some c.intermediateType  
         some pn: PathwayName | {
@@ -403,14 +403,14 @@ test suite for wellformed_course {
         }
         wellformed_course
     }} is unsat
-
+    //Courses must be intermediate and in an intermediate pathway
     wc_notInIntermediatePathwayNotIntermediate: assert {some c: Course | {
         some pn: PathwayName | {
             c.pathway[pn] = IntermediateT and no c.intermediateType
         }
         wellformed_course
     }} is unsat
-
+    //Only certain courses in very specific parameters get to finish the intro
     wc_finishIntroOnlyCertainCases: assert {some c: Course | {
         c.finishIntro = True 
         (some pn: PathwayName | {
@@ -421,7 +421,7 @@ test suite for wellformed_course {
         c.dept != CSCI)
         wellformed_course
     }} is unsat
-
+    //We can put in a fully unrelated course into the degree and that is ok
     wc_unrelatedCourseOK: assert {some c: Course, d: Degree | {
         no c.prereq
         c.dept != CSCI
@@ -438,12 +438,13 @@ test suite for wellformed_course {
 
 test suite for finished_calc {
     //positive
+    //No degree is valid
     example fc_noDegree is {finished_calc} for {
         Boolean = `T
         True = `T
         no Degree
     }
-
+    //Finishing calc finishes calc
     example fc_finishTrue is {finished_calc} for {
         Boolean = `T
         True = `T
@@ -453,14 +454,19 @@ test suite for finished_calc {
     }
 
     //assert
+    //This pred works
     fc_sat: assert finished_calc is sat
+    //Any degree with calc finished is enough
     fc_finishCalcTrueSuff: assert {some d: Degree | d.calc = True} is sufficient for finished_calc
+    //Any degree is enough (because the sig requires finishing calc)
     fc_anyDegreeSuff: assert {some d: Degree | some d} is sufficient for finished_calc
+    //Not finishing calc is impossible
     fc_finishCalcFalseUnsart: assert {some d: Degree | no d.calc and finished_calc} is unsat 
 }
 
 test suite for valid_intro_oSCB {
     //positive
+    //This is valid for the empty case
     example vioSCB_noDegree is {valid_intro_oSCB} for {
         Boolean = `T
         True = `T
@@ -468,6 +474,7 @@ test suite for valid_intro_oSCB {
     }
 
     //[Please notice how long this test case is. This is unreasonable.]
+    //We can have two generic intro courses that work
     example vioSCB_twoIntro is {valid_intro_oSCB} for {
         Boolean = `T
         True = `T
@@ -535,6 +542,7 @@ test suite for valid_intro_oSCB {
         `d.elec3 = `c3
     }
 
+    //We can have two generic courses that work, these courses do not need to be wellformed
     example vioSCB_twoIntroNotWFCourse is {valid_intro_oSCB} for {
         Boolean = `T
         True = `T
@@ -604,6 +612,7 @@ test suite for valid_intro_oSCB {
     }
 
     //negative
+    //We can't have intro courses that aren't CSCI
     example vioSCB_notCSCI is {not valid_intro_oSCB} for {
         Boolean = `T
         True = `T
@@ -623,6 +632,7 @@ test suite for valid_intro_oSCB {
         `d.intro2 = `c2
     }
 
+    //We can't have intro courses that don't finish the intro sequence
     example vioSCB_notFinishIntro is {not valid_intro_oSCB} for {
         Boolean = `T
         True = `T
@@ -641,6 +651,7 @@ test suite for valid_intro_oSCB {
         `d.intro2 = `c2
     }
 
+    //We can't have only one course complete the intro
     example vioSCB_notOneCourse is {not valid_intro_oSCB} for {
         Boolean = `T
         True = `T
@@ -659,6 +670,7 @@ test suite for valid_intro_oSCB {
         `d.intro2 = `c1
     }
 
+    //We can't have the intro courses appearing elsewhere in the degree
     example vioSCB_notDuplicatedInDegree is {not valid_intro_oSCB} for {
         Boolean = `T
         True = `T
@@ -680,10 +692,11 @@ test suite for valid_intro_oSCB {
     }
 
     //assert
+    //the predicate can run
     vioSCB_sat: assert valid_intro_oSCB is sat
-    
+    //there must be at least 2 courses
     vioSCB_unsatOneCourse: assert valid_intro_oSCB is unsat for exactly 1 Course
-    
+    //the courses must be in CSCI
     vioSCB_notWrongDept: assert {
         some disj c1, c2: Course, d: Degree | {
             d.intro1 = c1
@@ -692,7 +705,7 @@ test suite for valid_intro_oSCB {
             valid_intro_oSCB
         }
     } is unsat
-
+    //the courses must be distinct from each other
     vioSCB_notSameCourse: assert {
         some c1: Course, d: Degree | {
             d.intro1 = c1
@@ -700,17 +713,16 @@ test suite for valid_intro_oSCB {
             valid_intro_oSCB
         }
     } is unsat
-
-
+    //the course must finish the intro
     vioSCB_notNotFinish: assert {
         some disj c1, c2: Course, d: Degree | {
             d.intro1 = c1
             d.intro2 = c2
-            no c2.finishIntro or no c2.finishIntro
+            no c2.finishIntro or no c1.finishIntro
             valid_intro_oSCB
         }
     } is unsat
-
+    //the courses can't be elsewhere in the degree
     vioSCB_notElsewhereInDeg: assert {
         some disj c1, c2: Course, d: Degree | {
             d.intro1 = c1
@@ -758,10 +770,11 @@ test suite for valid_intro_oSCB {
 
 test suite for valid_intermediate {
     //assert because it is not worth writing those examples
+    //the pred must pass
     vi_sat: assert valid_intermediate is sat
-    
+    //the pred requires 5+ courses
     vi_not4OrFewerCourses: assert valid_intermediate is unsat for exactly 4 Course, 1 Degree
-    
+    //courses cannot overlap with each other
     vi_noOverlappingCourses: assert {
         some d: Degree | {
             d.inter1 = d.inter2 or
@@ -781,11 +794,11 @@ test suite for valid_intermediate {
             valid_intermediate
         }
     } is unsat
-
+    //all of the intermediate courses have a intermediate type
     vi_necAllCoursesAreIntermediate: assert {
         all c: Course | some c.intermediateType
     } is necessary for valid_intermediate for exactly 5 Course, 1 Degree
-    
+    //the courses must be distributed across categories
     vi_necIntermediateCategoryDist: assert {
         some disj c1, c2, c3, c4, c5: Course, d: Degree | (
             d.inter1 = c1 and
@@ -798,7 +811,7 @@ test suite for valid_intermediate {
             c3.intermediateType = SystemsI
         }
     } is necessary for valid_intermediate for exactly 5 Course, 1 Degree
-
+    //none of the categories can be missing
     vi_notMissingIntermediateType: assert {
         some disj c1, c2, c3, c4, c5: Course, d: Degree | (
             d.inter1 = c1 and
@@ -830,8 +843,11 @@ test suite for valid_intermediate {
 }
 
 test suite for distinct_pathways {
+    //the pred can run
     dp_sat: assert distinct_pathways is sat
+    //there must be at least two pathways
     dp_notLessThanTwo: assert distinct_pathways is unsat for exactly 1 PathwayRequirements
+    //the pathways must be distinct
     dp_notSamePathway: assert {
         some disj pr1, pr2: PathwayRequirements, pn: PathwayName, d: Degree | {
             d.pathway1 = pr1 and d.pathway2 = pr2
@@ -840,6 +856,7 @@ test suite for distinct_pathways {
         } and
         distinct_pathways
     } is unsat
+    //the pathways cannot have overlapping courses
     dp_notOverlappingCR: assert {
         some disj c1: Course, d: Degree, pr1, pr2: PathwayRequirements | {
             d.pathway1 = pr1 and d.pathway2 = pr2
@@ -853,8 +870,9 @@ test suite for distinct_pathways {
 }
 
 test suite for all_pathways_valid {
+    //the pred runs
     apv_sat: assert all_pathways_valid is sat
-
+    //the core courses must have a core type
     apv_notCoreCourseNotCoreType: assert {
         some c: Course, pr: PathwayRequirements, pn: PathwayName | {
             pr.core1 = c and pr.name = pn
@@ -862,7 +880,7 @@ test suite for all_pathways_valid {
         } and 
         all_pathways_valid
     } is unsat
-
+    //the core or related must be of that type
     apv_notCoreOrRelatedIsNotTyped: assert {
         some c: Course, pr: PathwayRequirements, pn: PathwayName | {
             pr.coreOrRelated = c and pr.name = pn
@@ -870,7 +888,7 @@ test suite for all_pathways_valid {
         } and
         all_pathways_valid
     } is unsat
-
+    //the intermediate course must be of that type
     apv_noIntCourseHasNotIntType: assert {
         some c: Course, pr: PathwayRequirements, pn: PathwayName | {
             pr.intermediate1 = c and pr.name = pn
@@ -878,9 +896,7 @@ test suite for all_pathways_valid {
         } and 
         all_pathways_valid
     } is unsat
-
-    //TODO: pathway specific asserts
-
+    //courses cannot repeat within the pathway
     apv_noOverlapsInPathway: assert {
         some pr: PathwayRequirements | {
             pr.core1 = pr.coreOrRelated or 
@@ -900,12 +916,14 @@ test suite for all_pathways_valid {
 }
 
 test suite for valid_two_pathways {
+    //the pred runs
     vtp_sat: assert valid_two_pathways is sat
 }
 
 test suite for valid_upper_level {
+    //the pred runs
     vul_sat: assert valid_upper_level is sat
-    
+    //the upper level course can't be in the pathway
     vul_notInPathway: assert {
         some d: Degree | {
             some d.upperLevel.pathway[d.pathway1.name] or
@@ -913,14 +931,14 @@ test suite for valid_upper_level {
         } and 
         valid_upper_level 
     } is unsat
-
+    //the upper level course must be CSCI
     vul_neccUpperLevelCSCI: assert {
         some d: Degree | {
             some d.upperLevel.upperDiv
             d.upperLevel.dept = CSCI 
         }
     } is necessary for valid_upper_level for exactly 1 Degree
-
+    //the courses cannot overlap within the degree
     vul_notOverlappingInDegree: assert {
         some d: Degree | {
             d.intro1 = d.upperLevel or
@@ -939,8 +957,9 @@ test suite for valid_upper_level {
 }
 
 test suite for valid_electives {
+    //the pred runs
     ve_sat: assert valid_electives is sat
-    
+    //there must be 3 distinct courses across the electives
     ve_necc3CourseInDegree: assert {
         some disj c1, c2, c3: Course, d: Degree | {
             d.elec1 = c1
@@ -948,7 +967,7 @@ test suite for valid_electives {
             d.elec3 = c3
         }
     } is necessary for valid_electives for exactly 1 Degree
-
+    //the electives cannot overlap
     ve_noElecOverlap: assert {
         some d: Degree | {
             d.elec1 = d.elec2 or
@@ -957,14 +976,14 @@ test suite for valid_electives {
         } and
         valid_electives
     } is unsat
-
+    //two of the electives must be upper division
     ve_neccTwoUpperDiv: assert {
         some d: Degree | {
             some d.elec1.upperDiv
             some d.elec2.upperDiv
         }
     } is necessary for valid_electives for exactly 1 Degree
-
+    //the courses cannot be elsewhere in the degree
     ve_notElsewhereInDegree: assert {
         some c1: Course, d: Degree | {
             (d.elec1 = c1 or d.elec2 = c1 or d.elec3 = c1) and
@@ -992,20 +1011,25 @@ test suite for valid_electives {
 }
 
 test suite for wellformed_degree {
+    //the pred can run
     wd_sat: assert wellformed_degree is sat
 
     // wd_sat_complex: assert wellformed_degree is sat for exactly 1 Degree, 18 Course
     
+    //there are not more than two courses that finish the intro 
+    //(there's only 2 courses that ever do this)
     wd_notMoreThanTwoFinIntro: assert {
         #{c: Course | some c.finishIntro} > 2 and
         wellformed_degree
     } is unsat for exactly 1 Degree
     
+    //there are not more than 4 artsy courses counted in the degree
     wd_notMoreThanFourArtsy: assert {
         #{c: Course | some c.artsy} > 4 and
         wellformed_degree
     } is unsat for exactly 1 Degree
 
+    //this all works on a real completed degree path
     example dorensActualDegree is {wellformed_degree} for {
         Boolean = `T
         True = `T
