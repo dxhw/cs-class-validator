@@ -25,9 +25,9 @@ one sig AiMlP, DesignP, SoftwareP, DataP, SecurityP, ComputationalBiologyP, Visu
 abstract sig PathwayCourseType {}
 one sig CoreT, RelatedT, IntermediateT extends PathwayCourseType {}
 
-abstract sig Department {}
-//We could add more departments here, but the main issue for the model is CSCI/not CSCI
-one sig CSCI, MATH extends Department {} 
+sig Department {}
+//the main issue for the model is CSCI/not CSCI
+one sig CSCI extends Department {} 
 
 //Set up model constructs
 sig Course {

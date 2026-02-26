@@ -23,12 +23,11 @@ test suite for wellformed_course {
 
     //Minimal inputs for 1 course
     example wc_OneCourse is {wellformed_course} for { 
-        Boolean = `True
-        True = `True
+        Boolean = `T
+        True = `T
         Degree = `d
         Department = `CSCI + `MATH
         CSCI = `CSCI
-        MATH = `MATH
         Course = `c
 
         `c.dept = `CSCI
@@ -36,12 +35,11 @@ test suite for wellformed_course {
     }
 
     example wc_TwoCourse is {wellformed_course} for { 
-        Boolean = `True
-        True = `True
+        Boolean = `T
+        True = `T
         Degree = `d
         Department = `CSCI + `MATH
         CSCI = `CSCI
-        MATH = `MATH
         Course = `c1 + `c2
 
         `c1.dept = `CSCI
@@ -52,12 +50,11 @@ test suite for wellformed_course {
     }
 
     example wc_TwoCoursePrereq is {wellformed_course} for { 
-        Boolean = `True
-        True = `True
+        Boolean = `T
+        True = `T
         Degree = `d
         Department = `CSCI + `MATH
         CSCI = `CSCI
-        MATH = `MATH
         Course = `c1 + `c2
 
         `c1.dept = `CSCI
@@ -71,12 +68,11 @@ test suite for wellformed_course {
     //negative
 
     example wc_SelfPrereq is {not wellformed_course} for { 
-        Boolean = `True
-        True = `True
+        Boolean = `T
+        True = `T
         Degree = `d
         Department = `CSCI + `MATH
         CSCI = `CSCI
-        MATH = `MATH
         Course = `c1 + `c2
 
         `c1.dept = `CSCI
@@ -85,12 +81,11 @@ test suite for wellformed_course {
     }
 
     example wc_CircularPrereq is {not wellformed_course} for { 
-        Boolean = `True
-        True = `True
+        Boolean = `T
+        True = `T
         Degree = `d
         Department = `CSCI + `MATH
         CSCI = `CSCI
-        MATH = `MATH
         Course = `c1 + `c2
 
         `c1.dept = `CSCI
@@ -104,12 +99,11 @@ test suite for wellformed_course {
 
 
     example wc_IndirectSelfPrereq is {not wellformed_course} for { 
-        Boolean = `True
-        True = `True
+        Boolean = `T
+        True = `T
         Degree = `d
         Department = `CSCI + `MATH
         CSCI = `CSCI
-        MATH = `MATH
 
         Course = `c1 + `c2 + `c3
 
@@ -127,13 +121,12 @@ test suite for wellformed_course {
     }
 
     example wc_notInterAndCore is {not wellformed_course} for {
-        Boolean = `True
-        True = `True
+        Boolean = `T
+        True = `T
         Degree = `d
 
         Department = `CSCI + `MATH
         CSCI = `CSCI
-        MATH = `MATH
         
         Intermediate = `FouI + `MatI + `SysI
         FoundationsI = `FouI
@@ -166,13 +159,12 @@ test suite for wellformed_course {
     }
 
     example wc_notInterAndRelated is {not wellformed_course} for {
-        Boolean = `True
-        True = `True
+        Boolean = `T
+        True = `T
         Degree = `d
 
         Department = `CSCI + `MATH
         CSCI = `CSCI
-        MATH = `MATH
         
         Intermediate = `FouI + `MatI + `SysI
         FoundationsI = `FouI
@@ -205,13 +197,12 @@ test suite for wellformed_course {
     }
 
     example wc_notIntermediateNoIntType is {not wellformed_course} for {
-        Boolean = `True
-        True = `True
+        Boolean = `T
+        True = `T
         Degree = `d
 
         Department = `CSCI + `MATH
         CSCI = `CSCI
-        MATH = `MATH
         
         Intermediate = `FouI + `MatI + `SysI
         FoundationsI = `FouI
@@ -243,13 +234,12 @@ test suite for wellformed_course {
     }
 
     example wc_notFinishIntroUpperDiv is {not wellformed_course} for {
-        Boolean = `True
-        True = `True
+        Boolean = `T
+        True = `T
         Degree = `d
 
         Department = `CSCI + `MATH
         CSCI = `CSCI
-        MATH = `MATH
         
         Intermediate = `FouI + `MatI + `SysI
         FoundationsI = `FouI
@@ -277,18 +267,17 @@ test suite for wellformed_course {
 
         `c.dept = `CSCI
         `c.degree = `d
-        `c.finishIntro = `True
-        `c.upperDiv = `True
+        `c.finishIntro = `T
+        `c.upperDiv = `T
     }
 
     example wc_notFinishIntroIntermediate is {not wellformed_course} for {
-        Boolean = `True
-        True = `True
+        Boolean = `T
+        True = `T
         Degree = `d
 
         Department = `CSCI + `MATH
         CSCI = `CSCI
-        MATH = `MATH
         
         Intermediate = `FouI + `MatI + `SysI
         FoundationsI = `FouI
@@ -316,18 +305,17 @@ test suite for wellformed_course {
 
         `c.dept = `CSCI
         `c.degree = `d
-        `c.finishIntro = `True
+        `c.finishIntro = `T
         `c.intermediateType = `FouI
     }
 
     example wc_notFinishIntroNotCS is {not wellformed_course} for {
-        Boolean = `True
-        True = `True
+        Boolean = `T
+        True = `T
         Degree = `d
 
         Department = `CSCI + `MATH
         CSCI = `CSCI
-        MATH = `MATH
         
         Intermediate = `FouI + `MatI + `SysI
         FoundationsI = `FouI
@@ -355,17 +343,16 @@ test suite for wellformed_course {
 
         `c.dept = `MATH
         `c.degree = `d
-        `c.finishIntro = `True
+        `c.finishIntro = `T
     }
 
     example wc_notFinishIntroNotPathway is {not wellformed_course} for {
-        Boolean = `True
-        True = `True
+        Boolean = `T
+        True = `T
         Degree = `d
 
         Department = `CSCI + `MATH
         CSCI = `CSCI
-        MATH = `MATH
         
         Intermediate = `FouI + `MatI + `SysI
         FoundationsI = `FouI
@@ -393,7 +380,7 @@ test suite for wellformed_course {
 
         `c.dept = `CSCI
         `c.degree = `d
-        `c.finishIntro = `True
+        `c.finishIntro = `T
         `c.pathway = `AiP -> `CorT
     }
 
@@ -437,7 +424,7 @@ test suite for wellformed_course {
 
     wc_unrelatedCourseOK: assert {some c: Course, d: Degree | {
         no c.prereq
-        c.dept = MATH
+        c.dept != CSCI
         no c.finishIntro
         no c.intermediateType
         all pn: PathwayName | {
@@ -452,17 +439,17 @@ test suite for wellformed_course {
 test suite for finished_calc {
     //positive
     example fc_noDegree is {finished_calc} for {
-        Boolean = `True
-        True = `True
+        Boolean = `T
+        True = `T
         no Degree
     }
 
     example fc_finishTrue is {finished_calc} for {
-        Boolean = `True
-        True = `True
+        Boolean = `T
+        True = `T
         Degree = `d
 
-        `d.calc = `True
+        `d.calc = `T
     }
 
     //assert
@@ -475,20 +462,19 @@ test suite for finished_calc {
 test suite for valid_intro_oSCB {
     //positive
     example vioSCB_noDegree is {valid_intro_oSCB} for {
-        Boolean = `True
-        True = `True
+        Boolean = `T
+        True = `T
         no Degree
     }
 
     //[Please notice how long this test case is. This is unreasonable.]
     example vioSCB_twoIntro is {valid_intro_oSCB} for {
-        Boolean = `True
-        True = `True
+        Boolean = `T
+        True = `T
         Degree = `d
 
         Department = `CSCI + `MATH
         CSCI = `CSCI
-        MATH = `MATH
 
         Course = `c1 + `c2 + `c3
 
@@ -526,7 +512,7 @@ test suite for valid_intro_oSCB {
 
         `c2.dept = `CSCI
         `c2.degree = `d
-        `c2.finishIntro = `True
+        `c2.finishIntro = `T
 
         `c3.dept = `MATH
         `c3.degree = `d
@@ -550,13 +536,12 @@ test suite for valid_intro_oSCB {
     }
 
     example vioSCB_twoIntroNotWFCourse is {valid_intro_oSCB} for {
-        Boolean = `True
-        True = `True
+        Boolean = `T
+        True = `T
         Degree = `d
 
         Department = `CSCI + `MATH
         CSCI = `CSCI
-        MATH = `MATH
 
         Course = `c1 + `c2 + `c3
 
@@ -595,7 +580,7 @@ test suite for valid_intro_oSCB {
 
         `c2.dept = `CSCI
         `c2.degree = `d
-        `c2.finishIntro = `True
+        `c2.finishIntro = `T
 
         `c3.dept = `MATH
         `c3.degree = `d
@@ -620,12 +605,11 @@ test suite for valid_intro_oSCB {
 
     //negative
     example vioSCB_notCSCI is {not valid_intro_oSCB} for {
-        Boolean = `True
-        True = `True
+        Boolean = `T
+        True = `T
         Degree = `d
         Department = `CSCI + `MATH
         CSCI = `CSCI
-        MATH = `MATH
         Course = `c1 + `c2
 
         `c1.dept = `CSCI
@@ -633,19 +617,18 @@ test suite for valid_intro_oSCB {
 
         `c2.dept = `MATH
         `c2.degree = `d
-        `c2.finishIntro = `True
+        `c2.finishIntro = `T
 
         `d.intro1 = `c1
         `d.intro2 = `c2
     }
 
     example vioSCB_notFinishIntro is {not valid_intro_oSCB} for {
-        Boolean = `True
-        True = `True
+        Boolean = `T
+        True = `T
         Degree = `d
         Department = `CSCI + `MATH
         CSCI = `CSCI
-        MATH = `MATH
         Course = `c1 + `c2
 
         `c1.dept = `CSCI
@@ -659,12 +642,11 @@ test suite for valid_intro_oSCB {
     }
 
     example vioSCB_notOneCourse is {not valid_intro_oSCB} for {
-        Boolean = `True
-        True = `True
+        Boolean = `T
+        True = `T
         Degree = `d
         Department = `CSCI + `MATH
         CSCI = `CSCI
-        MATH = `MATH
         Course = `c1 + `c2
 
         `c1.dept = `CSCI
@@ -678,12 +660,11 @@ test suite for valid_intro_oSCB {
     }
 
     example vioSCB_notDuplicatedInDegree is {not valid_intro_oSCB} for {
-        Boolean = `True
-        True = `True
+        Boolean = `T
+        True = `T
         Degree = `d
         Department = `CSCI + `MATH
         CSCI = `CSCI
-        MATH = `MATH
         Course = `c1 + `c2
 
         `c1.dept = `CSCI
@@ -1024,5 +1005,123 @@ test suite for wellformed_degree {
         #{c: Course | some c.artsy} > 4 and
         wellformed_degree
     } is unsat for exactly 1 Degree
+
+    example dorensActualDegree is {wellformed_degree} for {
+        Boolean = `T
+        True = `T
+        Degree = `d
+        oldDegreeSCB = `d
+
+        // The visualization can't work if the atom name is the same as sig, so CS instead of CSCI
+        Department = `CS + `CLPS + `APMA + `MATH
+        CSCI = `CS
+
+        Course = `CSCI0190 + `CLPS1850 + `CSCI0300 + `APMA1650 + `MATH0520 + `CSCI1805 + `CSCI1470 +
+                `CSCI2952S + `CSCI1650 + `CSCI1970A + `MATH1000 + `CSCI0320 + `CSCI1970B + 
+                `CSCI1270 + `CSCI1710
+
+        Intermediate = `FouI + `MatI + `SysI
+        FoundationsI = `FouI
+        MathematicsI = `MatI
+        SystemsI = `SysI
+
+        PathwayCourseType = `CorT + `RelT + `IntT
+        CoreT = `CorT
+        RelatedT = `RelT
+        IntermediateT = `IntT
+
+        PathwayName = `AiP + `DeP + `SoP + `DaP + `SeP + `CBP + `ViP + `CAP + `ThP + `SyP
+        AiMlP = `AiP 
+        DesignP = `DeP
+        SoftwareP = `SoP
+        DataP = `DaP
+        SecurityP = `SeP 
+        ComputationalBiologyP = `CBP
+        VisualComputingP = `ViP 
+        ComputingArchitectureP = `CAP
+        TheoryP = `ThP 
+        SystemsP = `SyP
+        
+        `CSCI0190.dept = `CS
+        `CSCI0190.finishIntro = `T
+
+        `CLPS1850.dept = `CLPS
+        `CLPS1850.pathway = `AiP -> `RelT
+
+        `CSCI0300.dept = `CS
+        `CSCI0300.prereq = `CSCI0190
+        `CSCI0300.pathway = `SeP -> `IntT
+
+        `APMA1650.dept = `APMA
+        `APMA1650.pathway = `AiP -> `IntT + `SeP -> `IntT
+
+        `MATH0520.dept = `MATH
+        `MATH0520.pathway = `AiP -> `IntT
+
+        `CSCI1805.dept = `CS
+        `CSCI1805.pathway = `SeP -> `RelT
+
+        `CSCI1470.dept = `CS
+        `CSCI1470.pathway = `AiP -> `CorT
+        `CSCI1470.prereq = `CSCI0190
+
+        `CSCI2952S.dept = `CS
+        no `CSCI2952S.pathway
+
+        `CSCI1650.dept = `CS
+        `CSCI1650.pathway = `SeP -> `CorT
+        `CSCI1650.prereq = `CSCI0300
+
+        `CSCI1970A.dept = `CS
+        no `CSCI1970A.pathway
+
+        `MATH1000.dept = `MATH
+        no `MATH1000.pathway
+        `MATH1000.prereq = `MATH0520
+
+        `CSCI0320.dept = `CS
+        no `CSCI0320.pathway
+        `CSCI0320.prereq = `CSCI0190
+
+        `CSCI1970B.dept = `CS
+        no `CSCI1970B.pathway
+
+        `CSCI1270.dept = `CS
+        no `CSCI1270.pathway
+        `CSCI1270.prereq = `CSCI0300
+
+        `CSCI1710.dept = `CS
+        `CSCI1710.pathway = `SeP -> `RelT
+        `CSCI1710.prereq = `CSCI0190
+
+        artsy = `CSCI2952S -> `T + `CSCI1805 -> `T
+        upperDiv = `CLPS1850 -> `T + `CSCI1805 -> `T + `CSCI1470 -> `T +
+                `CSCI2952S -> `T + `CSCI1650 -> `T + `CSCI1970A -> `T +
+                `CSCI1970B -> `T + `CSCI1270 -> `T + `CSCI1710 -> `T      
+        intermediateType = `CSCI0300 -> `SysI + `APMA1650 -> `MatI + `MATH0520 -> `MatI +
+                             `MATH1000 -> `FouI + `CSCI0320 -> `SysI
+
+        // This is the set of pathways that is actually true
+        // If we put all of the other pathways into this example,
+        // The model could actually tell me different "versions"
+        // of my degree (i.e., with different pathways)
+        // It will likely return something like this if not given those
+
+        // PathwayRequirements = `AiPathway + `SecurityPathway
+
+        // `AiPathway.name = `AiP
+        // `AiPathway.core1 = `CSCI1470
+        // `AiPathway.coreOrRelated = `CLPS1850
+        // `AiPathway.intermediate1 = `APMA1650
+        // `AiPathway.intermediate2 = `MATH0520
+
+        // `SecurityPathway.name = `SeP
+        // `SecurityPathway.core1 = `CSCI1650
+        // `SecurityPathway.coreOrRelated = `CSCI1805
+        // `SecurityPathway.intermediate1 = `APMA1650
+        // `SecurityPathway.intermediate2 = `CSCI0300
+
+        `d.calc = `T
+    }
 }
 
