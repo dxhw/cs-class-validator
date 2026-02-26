@@ -718,7 +718,7 @@ test suite for valid_intro_oSCB {
         some disj c1, c2: Course, d: Degree | {
             d.intro1 = c1
             d.intro2 = c2
-            no c2.finishIntro or no c1.finishIntro
+            no c2.finishIntro and no c1.finishIntro
             valid_intro_oSCB
         }
     } is unsat
@@ -1146,6 +1146,200 @@ test suite for wellformed_degree {
         // `SecurityPathway.intermediate2 = `CSCI0300
 
         `d.calc = `T
+    }
+    
+    // We can also use our model on actual degrees that are not completed to see how they might
+    // be able to complete them
+
+    // Kathy does not fulfill are the requirements right now, so this will not be sat!
+    example kathysActualDegree is {not wellformed_degree} for {
+        Boolean = `T
+        True = `T
+        Degree = `d
+        oldDegreeSCB = `d
+
+        `d.calc = `T
+    
+
+        // The visualization can't work if the atom name is the same as sig, so CS instead of CSCI
+        Department = `CS + `APMA + `MATH + `CLPS
+        CSCI = `CS
+
+        Course = `CSCI0170 + `CSCI0200 + `CSCI0300 + `APMA1650 + `MATH0520 + `CSCI1952X + `CSCI1411 +
+                `CSCI2952S + `CSCI1300 + `CSCI1970A + `CSCI0220 + `CSCI0320 + `CSCI1970B + 
+                `CSCI1953A + `CSCI1710
+
+        Intermediate = `FouI + `MatI + `SysI
+        FoundationsI = `FouI
+        MathematicsI = `MatI
+        SystemsI = `SysI
+
+        PathwayCourseType = `CorT + `RelT + `IntT
+        CoreT = `CorT
+        RelatedT = `RelT
+        IntermediateT = `IntT
+
+        PathwayName = `AiP + `DeP + `SoP + `DaP + `SeP + `CBP + `ViP + `CAP + `ThP + `SyP
+        AiMlP = `AiP 
+        DesignP = `DeP
+        SoftwareP = `SoP
+        DataP = `DaP
+        SecurityP = `SeP 
+        ComputationalBiologyP = `CBP
+        VisualComputingP = `ViP 
+        ComputingArchitectureP = `CAP
+        TheoryP = `ThP 
+        SystemsP = `SyP
+        
+        `CSCI0170.dept = `CS
+        no `CSCI0170.pathway
+
+        `d.intro1 = `CSCI0170
+        
+        `CSCI0200.dept = `CS
+        no `CSCI0200.pathway
+        `CSCI0200.finishIntro = `T
+
+        `CSCI0300.dept = `CS
+        `CSCI0300.pathway = `DaP -> `IntT + `DeP -> `IntT + `SeP -> `IntT + `SoP -> `IntT + `SyP -> `IntT + `ViP -> `IntT
+
+        `APMA1650.dept = `APMA
+        `APMA1650.pathway = `AiP -> `IntT + `CBP -> `IntT + `DaP -> `IntT + `DeP -> `IntT + `SeP -> `IntT + `ThP -> `IntT
+
+        `MATH0520.dept = `MATH
+        `MATH0520.pathway = `AiP -> `IntT + `DaP -> `IntT + `ThP -> `IntT + `ViP -> `IntT
+
+        `CSCI1952X.dept = `CS
+        no `CSCI1952X.pathway
+
+        `CSCI1411.dept = `CS
+        `CSCI1411.pathway = `AiP -> `CorT
+
+        `CSCI2952S.dept = `CS
+        no `CSCI2952S.pathway
+
+        `CSCI1300.dept = `CS
+        `CSCI1300.pathway = `DeP -> `CorT + `ViP -> `CorT
+
+        `CSCI1970A.dept = `CS
+        no `CSCI1970A.pathway
+
+        `CSCI0220.dept = `CS
+        `CSCI0220.pathway = `CBP -> `IntT + `SeP -> `IntT + `SoP -> `IntT + `SyP -> `IntT
+
+        `CSCI0320.dept = `CS
+        `CSCI0320.pathway = `DaP -> `IntT + `DeP -> `IntT + `SoP -> `IntT + `SyP -> `IntT + `ViP -> `IntT
+
+        `CSCI1970B.dept = `CS
+        no `CSCI1970B.pathway
+
+        `CSCI1953A.dept = `CS
+        `CSCI1953A.pathway = `DeP -> `RelT + `SeP -> `RelT
+
+        `CSCI1710.dept = `CS
+        `CSCI1710.pathway = `SeP -> `RelT + `SoP -> `CorT + `SyP -> `RelT + `ThP -> `RelT
+
+        artsy = `CSCI2952S -> `T + `CSCI1952X -> `T + `CSCI1953A -> `T
+        
+        upperDiv = `APMA1650 -> `T + `CSCI1952X -> `T + `CSCI1411 -> `T + `CSCI2952S -> `T + `CSCI1300 -> `T + `CSCI1970A -> `T + `CSCI1970B -> `T + `CSCI1953A -> `T + `CSCI1710 -> `T
+        
+        intermediateType = `CSCI0300 -> `SysI + `APMA1650 -> `MatI + `MATH0520 -> `MatI + `CSCI0220 -> `FouI + `CSCI0320 -> `SysI
+    }
+
+    // Kathy needs 1 more course of some kind to graduate, and can use our model to figure out
+    // what course would fit!
+    example kathysActualDegree_withExtraCourse is {wellformed_degree} for {
+        Boolean = `T
+        True = `T
+        Degree = `d
+        oldDegreeSCB = `d
+
+        `d.calc = `T
+    
+
+        // The visualization can't work if the atom name is the same as sig, so CS instead of CSCI
+        Department = `CS + `APMA + `MATH + `CLPS
+        CSCI = `CS
+
+        Course = `CSCI0170 + `CSCI0200 + `CSCI0300 + `APMA1650 + `MATH0520 + `CSCI1952X + `CSCI1411 +
+                `CSCI2952S + `CSCI1300 + `CSCI1970A + `CSCI0220 + `CSCI0320 + `CSCI1970B + 
+                `CSCI1953A + `CSCI1710 + `Unknown1
+
+        Intermediate = `FouI + `MatI + `SysI
+        FoundationsI = `FouI
+        MathematicsI = `MatI
+        SystemsI = `SysI
+
+        PathwayCourseType = `CorT + `RelT + `IntT
+        CoreT = `CorT
+        RelatedT = `RelT
+        IntermediateT = `IntT
+
+        PathwayName = `AiP + `DeP + `SoP + `DaP + `SeP + `CBP + `ViP + `CAP + `ThP + `SyP
+        AiMlP = `AiP 
+        DesignP = `DeP
+        SoftwareP = `SoP
+        DataP = `DaP
+        SecurityP = `SeP 
+        ComputationalBiologyP = `CBP
+        VisualComputingP = `ViP 
+        ComputingArchitectureP = `CAP
+        TheoryP = `ThP 
+        SystemsP = `SyP
+        
+        `CSCI0170.dept = `CS
+        no `CSCI0170.pathway
+
+        `d.intro1 = `CSCI0170
+        
+        `CSCI0200.dept = `CS
+        no `CSCI0200.pathway
+        `CSCI0200.finishIntro = `T
+
+        `CSCI0300.dept = `CS
+        `CSCI0300.pathway = `DaP -> `IntT + `DeP -> `IntT + `SeP -> `IntT + `SoP -> `IntT + `SyP -> `IntT + `ViP -> `IntT
+
+        `APMA1650.dept = `APMA
+        `APMA1650.pathway = `AiP -> `IntT + `CBP -> `IntT + `DaP -> `IntT + `DeP -> `IntT + `SeP -> `IntT + `ThP -> `IntT
+
+        `MATH0520.dept = `MATH
+        `MATH0520.pathway = `AiP -> `IntT + `DaP -> `IntT + `ThP -> `IntT + `ViP -> `IntT
+
+        `CSCI1952X.dept = `CS
+        no `CSCI1952X.pathway
+
+        `CSCI1411.dept = `CS
+        `CSCI1411.pathway = `AiP -> `CorT
+
+        `CSCI2952S.dept = `CS
+        no `CSCI2952S.pathway
+
+        `CSCI1300.dept = `CS
+        `CSCI1300.pathway = `DeP -> `CorT + `ViP -> `CorT
+
+        `CSCI1970A.dept = `CS
+        no `CSCI1970A.pathway
+
+        `CSCI0220.dept = `CS
+        `CSCI0220.pathway = `CBP -> `IntT + `SeP -> `IntT + `SoP -> `IntT + `SyP -> `IntT
+
+        `CSCI0320.dept = `CS
+        `CSCI0320.pathway = `DaP -> `IntT + `DeP -> `IntT + `SoP -> `IntT + `SyP -> `IntT + `ViP -> `IntT
+
+        `CSCI1970B.dept = `CS
+        no `CSCI1970B.pathway
+
+        `CSCI1953A.dept = `CS
+        `CSCI1953A.pathway = `DeP -> `RelT + `SeP -> `RelT
+
+        `CSCI1710.dept = `CS
+        `CSCI1710.pathway = `SeP -> `RelT + `SoP -> `CorT + `SyP -> `RelT + `ThP -> `RelT
+
+        artsy = `CSCI2952S -> `T + `CSCI1952X -> `T + `CSCI1953A -> `T
+        
+        upperDiv = `APMA1650 -> `T + `CSCI1952X -> `T + `CSCI1411 -> `T + `CSCI2952S -> `T + `CSCI1300 -> `T + `CSCI1970A -> `T + `CSCI1970B -> `T + `CSCI1953A -> `T + `CSCI1710 -> `T
+        
+        intermediateType = `CSCI0300 -> `SysI + `APMA1650 -> `MatI + `MATH0520 -> `MatI + `CSCI0220 -> `FouI + `CSCI0320 -> `SysI
     }
 }
 
