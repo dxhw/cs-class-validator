@@ -37,4 +37,18 @@ import json
             # humanities requirement (2)
             # 1970 repetition requirement
 
+from util.json_reader import JSONReader, load_all_data
+
+# Method 1: Create a reader instance
+reader = JSONReader()
+data = reader.load_all()  # Load all files at once
+
+# Access specific data
+pathways = reader.get_pathways()
+capstone_courses = reader.get_capstone_courses()
+print(capstone_courses)
+
+# Method 2: Use the convenience function
+all_data = load_all_data()
+print(all_data)
 
