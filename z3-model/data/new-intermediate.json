@@ -1,0 +1,40 @@
+[
+    {
+        "Category": "AI",
+        "Courses": [
+            [
+                "CSCI 0410",
+                "CSCI 1410",
+                "CSCI 1411",
+                "CSCI 1420",
+                "CSCI 1430",
+                "CSCI 1460",
+                "CSCI 1470",
+                "CSCI 1520",
+                "CSCI 1951A",
+                "CSCI 1952Q"
+            ]
+        ]
+    },
+    {
+        "Category": "Systems",
+        "Courses": [
+            [
+                "CSCI 0330",
+                "CSCI 0300",
+                "CSCI 0320"
+            ]
+        ]
+    },
+    {
+        "Category": "Theory",
+        "Courses": [
+            [
+                "CSCI 0500",
+                "CSCI 1010",
+                "CSCI 1550",
+                "CSCI 1570"
+            ]
+        ]
+    }
+]
