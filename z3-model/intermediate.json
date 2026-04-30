@@ -1,0 +1,48 @@
+[
+    {
+        "Category": "Foundations",
+        "Courses": [
+            [
+                "CSCI 0220",
+                "MATH 1000",
+                "MATH 1001",
+                "MATH 1530"
+            ],
+            [
+                "CSCI 1010"
+            ]
+        ]
+    },
+    {
+        "Category": "Mathematics",
+        "Courses": [
+            [
+                "CSCI 0530",
+                "MATH 0520",
+                "MATH 0540"
+            ],
+            [
+                "CSCI 1450",
+                "APMA 1650",
+                "APMA 1655"
+            ],
+            [
+                "MATH 0180",
+                "MATH 0200",
+                "MATH 0350"
+            ]
+        ]
+    },
+    {
+        "Category": "Systems",
+        "Courses": [
+            [
+                "CSCI 0320"
+            ],
+            [
+                "CSCI 0330",
+                "CSCI 0300"
+            ]
+        ]
+    }
+]

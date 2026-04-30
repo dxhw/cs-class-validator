@@ -1,0 +1,380 @@
+[
+    {
+        "Pathway": "Artificial Intelligence/Machine Learning",
+        "Core Courses": [
+            "CSCI 0410",
+            "CSCI 1410",
+            "CSCI 1411",
+            "CSCI 1420",
+            "CSCI 1430",
+            "CSCI 1460",
+            "CSCI 1470",
+            "CSCI 2470",
+            "CSCI 1850",
+            "CSCI 1951R",
+            "CSCI 1520",
+            "CSCI 1952Q",
+            "DATA 2060"
+        ],
+        "Graduate Courses": [
+            "CSCI 2402C",
+            "CSCI 2410",
+            "CSCI 2420",
+            "CSCI 2440",
+            "CSCI 2470",
+            "CSCI 2540",
+            "CSCI 2640",
+            "CSCI 2950K",
+            "CSCI 2951C",
+            "CSCI 2951F",
+            "CSCI 2951I",
+            "CSCI 2951K",
+            "CSCI 2951W",
+            "CSCI 2951X",
+            "CSCI 2951Z",
+            "CSCI 2952C",
+            "CSCI 2952D",
+            "CSCI 2952G",
+            "CSCI 2952K",
+            "CSCI 2952L",
+            "CSCI 2952N",
+            "CSCI 2952O",
+            "CSCI 2952P",
+            "ENGN 2912U",
+            "CSCI 2952Q",
+            "CSCI 2952W",
+            "CSCI 2952X",
+            "CSCI 2955"
+        ],
+        "Related Courses": [
+            "CSCI 1440",
+            "CSCI 1550",
+            "CSCI 1640",
+            "CSCI 1951A",
+            "CSCI 1951C",
+            "CSCI 1951Z",
+            "CSCI 1952A",
+            "CSCI 1952I",
+            "CLPS 1850",
+            "CSCI 1952Z",
+            "APMA 1740",
+            "APMA 2070",
+            "ENGN 1610"
+        ],
+        "Intermediate Courses": [
+            ["CSCI 1450", "APMA 1650", "APMA 1655"],
+            ["CSCI 0530", "MATH 0520", "MATH 0540"]
+        ]
+    },
+    {
+        "Pathway": "Computational Biology",
+        "Core Courses": [
+            "CSCI 1810",
+            "CSCI 1820",
+            "CSCI 1850"
+        ],
+        "Graduate Courses": [
+            "CSCI 2820",
+            "CSCI 2952G"
+        ],
+        "Related Courses": [
+            "CSCI 1420",
+            "CSCI 1430",
+            "CSCI 1470",
+            "CSCI 1951A",
+            "CLPS 1520",
+            "DATA 2060"
+        ],
+        "Intermediate Courses": [
+            "CSCI 0220",
+            ["CSCI 0500", "CSCI 1010"],
+            ["CSCI 1450", "APMA 1650", "APMA 1655"]
+        ]
+    },
+    {
+        "Pathway": "Computer Architecture",
+        "Core Courses": [
+            "CSCI 1952Y",
+            "ENGN 1630",
+            "ENGN 1640",
+            "ENGN 1650"
+        ],
+        "Graduate Courses": [
+            "ENGN 2912M",
+            "ENGN 2912E",
+            "CSCI 2952J"
+        ],
+        "Related Courses": [
+            "CSCI 1951O",
+            "CSCI 1600",
+            "CSCI 1760",
+            "ENGN 1600"
+        ],
+        "Intermediate Courses": [
+            ["CSCI 0330", "CSCI 0300"]
+        ]
+    },
+    {
+        "Pathway": "Data",
+        "Core Courses": [
+            "CSCI 1270",
+            "CSCI 1420",
+            "CSCI 1951A",
+            "DATA 2060"
+        ],
+        "Graduate Courses": [
+            "CSCI 2270",
+            "CSCI 2390",
+            "CSCI 2540",
+            "CSCI 2951H",
+            "CSCI 2951O",
+            "CSCI 2952W"
+        ],
+        "Related Courses": [
+            "CSCI 1380",
+            "CSCI 1550",
+            "CSCI 1580"
+        ],
+        "Intermediate Courses": [
+            ["CSCI 0300", "CSCI 0320", "CSCI 0330"],
+            ["CSCI 1450", "APMA 1650", "APMA 1655"],
+            ["CSCI 0530", "MATH 0520", "MATH 0540"]
+        ]
+    },
+    {
+        "Pathway": "Design",
+        "Core Courses": [
+            "CSCI 1230",
+            "CSCI 2230",
+            "CSCI 1300",
+            "CSCI 1302",
+            "CSCI 1370",
+            "CSCI 1951C",
+            "CSCI 1951V"
+        ],
+        "Graduate Courses": [
+            "CSCI 2300",
+            "CSCI 2952V",
+            "CSCI 2952Y"
+        ],
+        "Related Courses": [
+            "CSCI 1230",
+            "CSCI 1320",
+            "CSCI 1360",
+            "CSCI 1377",
+            "CSCI 1600",
+            "CSCI 1951A",
+            "CSCI 1900",
+            "CSCI 1951I",
+            "CSCI 1951O",
+            "CSCI 1951V",
+            "VISA 1720",
+            "CSCI 1951S",
+            "CSCI 1951T",
+            "CSCI 1952A",
+            "CSCI 1952B",
+            "CSCI 1953A",
+            "ENGN 1931I"
+        ],
+        "Intermediate Courses": [
+            ["CSCI 0300", "CSCI 0320", "CSCI 0330"],
+            ["CSCI 1450", "APMA 1650", "APMA 1655"]
+        ]
+    },
+    {
+        "Pathway": "Security",
+        "Core Courses": [
+            "CSCI 1510",
+            "CSCI 1515",
+            "CSCI 1650",
+            "CSCI 1660",
+            "CSCI 2660"
+        ],
+        "Graduate Courses": [
+            "CSCI 2590",
+            "CSCI 2950V",
+            "CSCI 2951E",
+            "CSCI 2951U"
+        ],
+        "Related Courses": [
+            "CSCI 1320",
+            "CSCI 1360",
+            "CSCI 1380",
+            "CSCI 1040",
+            "CSCI 1640",
+            "CSCI 1670",
+            "CSCI 1680",
+            "CSCI 1710",
+            "CSCI 1950Y",
+            "CSCI 1730",
+            "CSCI 1800",
+            "CSCI 1805",
+            "CSCI 1860",
+            "CSCI 1870",
+            "CSCI 1951L",
+            "CSCI 1953A"
+        ],
+        "Intermediate Courses": [
+            ["CSCI 0300", "CSCI 0330"],
+            ["CSCI 0220", "CSCI 1450", "APMA 1650", "APMA 1655"]
+        ]
+    },
+    {
+        "Pathway": "Software Principles",
+        "Core Courses": [
+            "CSCI 1260",
+            "CSCI 1320",
+            "CSCI 1600",
+            "CSCI 1730",
+            "CSCI 1710",
+            "CSCI 1950Y",
+            "CSCI 1951U"
+        ],
+        "Graduate Courses": [
+            "CSCI 2330",
+            "CSCI 2340",
+            "CSCI 2730",
+            "CSCI 2950X",
+            "CSCI 2951U",
+            "CSCI 2952R"
+        ],
+        "Related Courses": [
+            "CSCI 1270",
+            "CSCI 1380",
+            "CSCI 1650",
+            "CSCI 1680",
+            "CSCI 1951I",
+            "CSCI 1951Q",
+            "CSCI 1951S",
+            "CSCI 1951T",
+            "CSCI 1951X"
+        ],
+        "Intermediate Courses": [
+            "CSCI 0220",
+            "CSCI 0320",
+            ["CSCI 0300", "CSCI 0330"]
+        ]
+    },
+    {
+        "Pathway": "Systems",
+        "Core Courses": [
+            "CSCI 1270",
+            "CSCI 1380",
+            "CSCI 1390",
+            "CSCI 1670",
+            "CSCI 2670",
+            "CSCI 1675",
+            "CSCI 1680"
+        ],
+        "Graduate Courses": [
+            "CSCI 2390",
+            "CSCI 2680",
+            "CSCI 2690",
+            "CSCI 2950U",
+            "CSCI 2952E",
+            "CSCI 2952F",
+            "CSCI 2952J",
+            "CSCI 2952R"
+        ],
+        "Related Courses": [
+            "CSCI 1260",
+            "CSCI 1320",
+            "CSCI 1600",
+            "CSCI 1650",
+            "CSCI 1660",
+            "CSCI 1730",
+            "CSCI 1760",
+            "CSCI 1710",
+            "CSCI 1950Y",
+            "ENGN 1640",
+            "CSCI 1951L",
+            "CSCI 1951V",
+            "CSCI 1952Y"
+        ],
+        "Intermediate Courses": [
+            ["CSCI 0220", "CSCI 0320"],
+            ["CSCI 0300", "CSCI 0330"]
+        ]
+    },
+    {
+        "Pathway": "Theory",
+        "Core Courses": [
+            "CSCI 1510",
+            "CSCI 1550",
+            "CSCI 1570",
+            "CSCI 1760",
+            "CSCI 1951W",
+            "CSCI 1951X"
+        ],
+        "Graduate Courses": [
+            "CSCI 2500A",
+            "CSCI 2500B",
+            "CSCI 2510",
+            "CSCI 2540",
+            "CSCI 2730",
+            "CSCI 2750",
+            "CSCI 2950E",
+            "CSCI 2950K",
+            "CSCI 2951Q",
+            "CSCI 2952M",
+            "CSCI 2952T",
+            "CSCI 2952U"
+        ],
+        "Related Courses": [
+            "CSCI 1440",
+            "CSCI 1810",
+            "CSCI 1820",
+            "CSCI 1950H",
+            "CSCI 1710",
+            "CSCI 1950Y",
+            "CSCI 1951G",
+            "CSCI 1520",
+            "CSCI 1952Q"
+        ],
+        "Intermediate Courses": [
+            "CSCI 1010",
+            ["CSCI 1450", "APMA 1650", "APMA 1655"],
+            ["CSCI 0530", "MATH 0520", "MATH 0540"]
+        ]
+    },
+    {
+        "Pathway": "Visual Computing",
+        "Core Courses": [
+            "CSCI 1230",
+            "CSCI 2230",
+            "CSCI 1250",
+            "CSCI 1280",
+            "CSCI 1290",
+            "CSCI 1300",
+            "CSCI 1370",
+            "CSCI 1430",
+            "CSCI 1950T",
+            "CSCI 1951S",
+            "CSCI 1951T"
+        ],
+        "Graduate Courses": [
+            "CSCI 2240",
+            "CSCI 2300",
+            "CSCI 2370",
+            "CSCI 2950J",
+            "CSCI 2950Q",
+            "CSCI 2951I",
+            "CSCI 2951W",
+            "CSCI 2952O"
+        ],
+        "Related Courses": [
+            "CSCI 1470",
+            "CSCI 1950U",
+            "CSCI 1950N",
+            "ENGN 1610",
+            "CSCI 1430",
+            "CLPS 1520",
+            "DATA 1200",
+            "CSCI 1951V"
+        ],
+        "Intermediate Courses": [
+            ["CSCI 0300", "CSCI 0320", "CSCI 0330"],
+            ["CSCI 0530", "MATH 0520", "MATH 0540"]
+        ]
+    }
+]
