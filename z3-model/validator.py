@@ -36,19 +36,5 @@ import json
             # one additional course
             # humanities requirement (2)
             # 1970 repetition requirement
-    # New:
-    #     SCB:
-    #         intro sequence (2 courses)
-    #         math foundations (22)
-    #         3 foundations (AI, systems, theory)
-    #         5 1000+ levels - not artsy, not 1970
-    #         4 electives - basically anything (2 1970, linear, swe, 3 non-department)
-    #         capstone
-        # AB: 
-    #         intro sequence (2 courses)
-    #         math foundations (22)
-    #         3 foundations (AI, systems, theory)
-    #         2 1000+ levels - not artsy, not 1970
-    #         2 electives - basically anything (2 1970, linear, swe, 3 non-department)
-    #         capstone
+
 
