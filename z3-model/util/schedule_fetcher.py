@@ -53,7 +53,25 @@ class ScheduleFetcher():
                 e.pos
             )
         
-    def get_json(self, file_name: str) -> Any:
+    def __fix_1970_courses(self, courses: list[str]) -> list[str]:
+        # change the first instance of CSCI 1970 into 1970(1), the second instance in 1970(2)
+        # further instances should be changed to "UNUSABLE" so that they cannot be used
+
+        count_1970 = 0
+
+        for i, course in enumerate(courses):
+            if course == "CSCI 1970":
+                count_1970 += 1
+                if count_1970 == 1:
+                    courses[i] = "CSCI 1970(1)"
+                elif count_1970 == 2:
+                    courses[i] = "CSCI 1970(2)"
+                else:
+                    courses[i] = "UNUSABLE"
+        
+        return courses
+                
+    def get_json(self, file_name: str) -> list[str]:
         """
         Get json data by file name.
         
@@ -64,5 +82,5 @@ class ScheduleFetcher():
             The loaded data, or None if file doesn't exist
         """
         file_path = self.schedule_dir / f"{file_name}.json"
-        return self.__load_json_file(file_path)
-    
+        loaded_json: list[str] = self.__load_json_file(file_path)
+        return self.__fix_1970_courses(loaded_json)

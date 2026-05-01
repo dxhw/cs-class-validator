@@ -483,8 +483,8 @@ class OldCS():
             for course in self.courses:
                 var = self.assignment_vars[course]["capstone"]
 
-                # 1. Universally valid capstones (1970A and 1970B)
-                if course in ["CSCI 1970A", "CSCI 1970B"]:
+                # 1. Universally valid capstones (1970(1) and 1970(2))
+                if course in ["CSCI 1970(1)", "CSCI 1970(2)"]:
                     valid_capstones.append(If(var, 1, 0))
                     continue
 

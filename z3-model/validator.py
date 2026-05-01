@@ -11,7 +11,7 @@
 # get user class year
 
 # get user data (demo with JSON)
-# for multiple instances of CSCI1970, turn the first one into CSCI1970A, the second into CSCI1970B, and drop remaining ones
+# for multiple instances of CSCI1970, turn the first one into CSCI1970(1), the second into CSCI1970(2), and drop remaining ones
 # (you can count up to two instances of 1970 towards a degree)
 # then, we will need to reconvert that back at the end
 
