@@ -34,7 +34,7 @@ DEFAULT_OLD_CONSTRAINTS_DICT = {
 
 reader = JSONReader()
 schedules = ScheduleFetcher()
-courses = schedules.get_json("doren_schedule")
+courses = schedules.get_json("test_schedule1")
 old_validator = OldCS(2026, courses, reader, DEFAULT_OLD_CONSTRAINTS_DICT)
 old_validator.validate("SCB")
 
