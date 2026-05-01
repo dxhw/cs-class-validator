@@ -26,6 +26,7 @@ from z3 import *
 
 class NewCS():
     def  __init__(self, year: int, courses: list[str], reader: JSONReader, constraint_dict: dict[str, bool]):
+        #set up our class
         self.s = Solver()
         self.constraint_dict = constraint_dict
         self.year = year 
@@ -180,23 +181,29 @@ class NewCS():
     
 
     def __newMathConstraint(self, degree_type: str) -> BoolRef:
-        math_allowed = {"CSCI 0220", "MATH 1530"} #technically more courses can do this, but the dept is vague about it
+        math_allowed = {"CSCI 0220", "MATH 1530"} #technically more courses can do this, but the dept is vague about it so no
 
         total_math_conditions = []
 
+        #for each course...
         for course in self.courses:
+            #get the z3 variable for that course
             math_var = self.assignment_vars[course]["math"]
 
+            #add a condition to count the requirement if allowed
             if course in math_allowed:
                 total_math_conditions.append(If(math_var, 1, 0))
             else:
+                #and disallow the assignment for this requirement if not.
                 self.s.add(Not(math_var))
 
+        #We only need one math foundations course in the degree
         final_math_constraint = Sum(*([0] + total_math_conditions)) == 1
         return final_math_constraint
     
 
     def __newFoundationsConstraint(self, degree_type: str) -> BoolRef:
+        #Get the groups of foundations courses
         foundations_requirements = self.reader.get_new_foundations()
 
         valid_foundations_courses = set()
@@ -211,8 +218,9 @@ class NewCS():
             # iterate through each group
             for group in course_groups:
                 slot_vars = []
-                #extract all of the courses
+                #extract all of the courses for the group
                 for course in group:
+                    #ignore 0320 if SCB
                     if not(course == "CSCI 0320" and degree_type == "SCB"):
                         valid_foundations_courses.add(course)
                     
@@ -229,7 +237,7 @@ class NewCS():
                     cat_slot_sums.append(slot_sum)
                     all_slot_sums.append(slot_sum)
 
-            # 2. Track if this specific Category (branch) is active
+            # 2. Track if this specific category is active
             if cat_slot_sums:
                 cat_total = Sum(*cat_slot_sums)
                 # If they fulfilled at least 1 slot in this category, the branch counts as 1
@@ -253,11 +261,13 @@ class NewCS():
 
 
     def __newTechnicalConstraint(self, degree_type: str) -> BoolRef: 
+        #get the list of humanities courses to check against
         humanities_courses: list[str] = self.reader.get_humanities_courses()
 
         valid_conditions = []
         
         for course in self.courses:
+            #get the corresponding z3 variable for each course
             technical_var = self.assignment_vars[course]["technical"]
             
             # 1. Parse the course code (e.g., "CSCI 1450" -> 1450)
@@ -267,15 +277,14 @@ class NewCS():
             except ValueError:
                 course_num = 0
                 
-            # 2. Basic Check: Must be a CSCI course >= 1000 and not CSCI 1970
+            # 2. Basic Check: Must be a CSCI course >= 1000 and not CSCI 1970 and not humanities
             if (course.startswith("CSCI") and 
                 course_num >= 1000 and 
                 not course.startswith("CSCI 1970") and
                 course not in humanities_courses):
                 valid_conditions.append(If(technical_var, 1, 0))
-                        
             else:
-                # Force invalid courses (e.g., ENGN courses or < 1000) to False
+                # Force invalid courses (e.g., ENGN courses or < 1000 or IDP or humanities) to False
                 self.s.add(Not(technical_var))
                 
         # We need exactly 5 or 2 upper-level courses dep. on the degree
@@ -304,7 +313,9 @@ class NewCS():
         non_cs_conditions = []
         systems_conditions = []
 
+        #for each course...
         for course in self.courses:
+            #get the corresponding variable for that course
             elective_var = self.assignment_vars[course]["elective"]
 
             # Extract course number to check the "1000 or 2000-level" rule
@@ -313,6 +324,7 @@ class NewCS():
             except ValueError:
                 course_num = 0
 
+            #check if the course is a valid elective
             is_valid_course = (
                 course in valid_electives or # course is approved
                 ((course.startswith("CSCI") or course.startswith("MATH")) and 1000 <= course_num < 3000) #course is CSCI/MATH 1000+
@@ -331,8 +343,10 @@ class NewCS():
                     non_cs_conditions.append(If(elective_var, 1, 0))
 
             else:
+                #otherwise, this course is not a valid elective
                 self.s.add(Not(elective_var))
 
+        #count the number of courses in each group
         total_assigned = Sum(*([0] + total_assigned_conditions))
         total_non_cs = Sum(*([0] + non_cs_conditions))
         total_systems = Sum(*([0] + systems_conditions))
@@ -349,32 +363,36 @@ class NewCS():
         return final_constraint
     
     def __newCapstoneConstraint(self, degree_type: str) -> BoolRef:
+        #get the list of capstones
         capstone_courses: list[str] = self.reader.get_capstone_courses()
 
         valid_capstones = []
 
+        #for each course...
         for course in self.courses:
+            #get the capstone z3 variable for the course
             var = self.assignment_vars[course]["capstone"]
 
-            # 1. Universally valid capstones (1970(1) and 1970(2))
+            # 1. Add universally valid capstones (1970(1) and 1970(2))
             if course in ["CSCI 1970(1)", "CSCI 1970(2)"]:
                 valid_capstones.append(If(var, 1, 0))
                 continue
 
-            # 2. Course is in the list of capstone-able courses
+            # 2. Add if course is in the list of capstone-able courses
             if course in capstone_courses:
                 valid_capstones.append(If(var, 1, 0))
 
-            # 3. Not 1970, and not in the capstone list. Cannot be used.
+            # 3. Not 1970, and not in the capstone list. Cannot be used for capstone!
             else:
                 self.s.add(Not(var))
 
-        # We require exactly 1 capstone course
+        # We require exactly 1 capstone course always
         # (Adding [0] prevents crashing if valid_capstones is totally empty)
         return Sum(*([0] + valid_capstones)) == 1 # type: ignore
 
 
     def __humanitiesLimitConstraint(self, degree_type: str) -> BoolRef:
+        # get the list of humanities courses to check against
         humanities_courses: list[str] = self.reader.get_humanities_courses()
         
         used_humanities_conditions = []
@@ -419,16 +437,18 @@ class NewCS():
     
 
     def __doubleDippingConstraint(self):
+        #get the list of active requirement categories
         active_reqs = [req for req, is_active in self.constraint_dict.items() if is_active]
         
+        #for each course...
         for course in self.courses:
-            # capstones and humanities can overlap with anything, so take them out of the restricted pool
+            # capstones and humanities requirments can overlap with anything, so take them out of the restricted pool
             restricted_reqs = [req for req in active_reqs if (req != "capstone" and req != "humanities-limit")]
             
             # get the booleans for all remaining restricted requirements
             restricted_bools = [self.assignment_vars[course][req] for req in restricted_reqs]
             
-            # count how many restricted buckets this course is placed into
+            # count how many restricted buckets (requirement sets) this course is placed into
             restricted_count = Sum(*[If(b, 1, 0) for b in restricted_bools])
 
             # do not allow these buckets to overlap AT ALL
