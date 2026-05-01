@@ -24,19 +24,24 @@ class OldCS():
         self.reader = reader
 
     def validate(self, degree_type: str):
+        #Only degree types are AB/SCB
         assert degree_type == "SCB" or degree_type == "AB"
-        if self.year > 2027:
-            print("These requirements are only available to students in classes 2024-2027, so this student is not eligible for them")
-            return False
-        
         print("old " + degree_type)
+
         self.s.push()
 
+        # Old requirements are only allowed for c/o 2027 and earlier
+        self.s.add(self.year < 2028)
+        if self.year > 2027:
+            print("These requirements are only available to students in classes 2024-2027, so this student is not eligible for them")
+
         # Create the boolean matrix
+        # for each course, there is a set of reqs it may or may not fulfill, so make a table of them
         # assignment_vars[course][req] = Z3 Bool
         self.assignment_vars = {}
         active_reqs = [req for req, is_active in self.constraint_dict.items() if is_active]
 
+        # set up an empty mapping of Z3 bools for each course
         for course in self.courses:
             self.assignment_vars[course] = {}
             for req in active_reqs:
@@ -56,10 +61,13 @@ class OldCS():
         # Print the actual course assignments if satisfied
         if is_sat:
             self.__print_results()
+        else:
+            print("unsat")
 
         self.s.pop()
         return is_sat
     
+    # this function assumes the constraints are SAT!
     def __print_results(self):
         active_reqs = [req for req, is_active in self.constraint_dict.items() if is_active]
         m = self.s.model()
@@ -168,7 +176,7 @@ class OldCS():
         taken_0190 = False  # Will hold the Z3 variable if they took it
 
         for course in self.courses:
-            var = self.assignment_vars[course]["intro"]
+            intro_var = self.assignment_vars[course]["intro"]
             total_intros.append(If(var, 1, 0))
 
             # Extract the course number to check the ">= 0200" rule
@@ -180,17 +188,17 @@ class OldCS():
 
             is_cs_course = course.startswith("CSCI")
 
-            # --- Build Path 1 variables ---
+            # --- Build Path 1 variables: standard ---
             if course in intro_1_standard:
-                path1_intro1_pool.append(If(var, 1, 0))
+                path1_intro1_pool.append(If(intro_var, 1, 0))
             if course == intro_2_standard:
-                taken_0200 = var
+                taken_0200 = intro_var
 
-            # --- Build Path 2 variables ---
+            # --- Build Path 2 variables: accel ---
             if course == intro_1_accel:
-                taken_0190 = var
+                taken_0190 = intro_var
             if course_num >= 200 and is_cs_course:
-                path2_intro2_pool.append(If(var, 1, 0))
+                path2_intro2_pool.append(If(intro_var, 1, 0))
 
         # Safely handle if the student didn't take 0190 or 0200 at all
         # If they didn't take it, we pass Z3 a hardcoded False
@@ -227,11 +235,14 @@ class OldCS():
             course_groups = category_data["Courses"]
             cat_slot_sums = []
 
+            # iterate through each group
             for group in course_groups:
                 slot_vars = []
+                #extract all of the courses
                 for course in group:
                     valid_intermediate_courses.add(course)
                     
+                    #add an intermediate variable for each course
                     if course in self.courses:
                         var = self.assignment_vars[course]["intermediate"]
                         slot_vars.append(If(var, 1, 0))
@@ -289,6 +300,7 @@ class OldCS():
             p_active = Bool(f"pathway_{p_name}_active")
             pathway_active_vars.append(p_active)
 
+            # do some set unions to know what's in the pathway
             core_set = set(pathway["Core Courses"])
             valid_set = core_set | set(pathway["Graduate Courses"]) | set(pathway["Related Courses"])
 
