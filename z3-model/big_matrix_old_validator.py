@@ -29,12 +29,15 @@ class OldCS():
 
         self.s = Solver()
         self.constraint_dict = constraint_dict
-        self.year = year
+        self.year = year # if you are above class of 2027, these requirements are not available
         self.courses = courses
         self.reader = reader
 
     def validate(self, degree_type: str):
         assert degree_type == "SCB" or degree_type == "AB"
+        if self.year > 2027:
+            print("These requirements are only available to students in classes 2024-2027, so this student is not eligible for them")
+            return False
         
         print("old " + degree_type)
         self.s.push()
@@ -60,16 +63,87 @@ class OldCS():
 
         is_sat = self.s.check() == sat
         
-        # Optional: Print the actual course assignments if satisfied
+        # Print the actual course assignments if satisfied
         if is_sat:
-            m = self.s.model()
-            print("\n--- Valid Course Assignment ---")
-            for req in active_reqs:
-                used_courses = [c for c in self.courses if is_true(m.evaluate(self.assignment_vars[c][req]))]
-                print(f"{req}: {used_courses}")
+            self.__print_results()
 
         self.s.pop()
         return is_sat
+    
+    def __print_results(self):
+        active_reqs = [req for req, is_active in self.constraint_dict.items() if is_active]
+        m = self.s.model()
+        print("\n--- Valid Course Assignment ---")
+        all_used_courses = []
+        
+        for req in active_reqs:
+            if req == "humanities-limit":
+                continue
+            
+            # Gather all courses used for this bucket
+            used_courses = [c for c in self.courses if is_true(m.evaluate(self.assignment_vars[c][req]))]
+            all_used_courses.extend(used_courses)
+            
+            # Print everything EXCEPT pathways as a standard list
+            if req != "pathways":
+                print(f"{req}: {used_courses}")
+
+        # --- Structured Pathways Printing ---
+        if "pathways" in active_reqs:
+            print("pathways:")
+            pathway_requirements = self.reader.get_pathways()
+            
+            for pathway in pathway_requirements:
+                p_name = pathway["Pathway"]
+                
+                # Check if this specific pathway was activated by Z3
+                is_active = is_true(m.evaluate(Bool(f"pathway_{p_name}_active")))
+                
+                if is_active:
+                    print(f"  - {p_name}:")
+                    
+                    # Find the exactly 2 courses assigned to THIS pathway
+                    assigned_courses = []
+                    for c in self.courses:
+                        if is_true(m.evaluate(Bool(f"use_{c}_for_pathway_{p_name}"))):
+                            assigned_courses.append(c)
+                            
+                    # Separate into Core and Additional
+                    core_set = set(pathway["Core Courses"])
+                    cores_used = [c for c in assigned_courses if c in core_set]
+                    
+                    # The first core course satisfies the "Core" slot
+                    core_course = cores_used[0] if cores_used else "None"
+                    
+                    # The remaining course (which could be a 2nd core, grad, or related) is the additional
+                    additional_courses = [c for c in assigned_courses if c != core_course]
+                    additional_course = additional_courses[0] if additional_courses else "None"
+                    
+                    print(f"      Core: {core_course}")
+                    print(f"      Additional: {additional_course}")
+                    
+                    # Find which transcript courses fulfilled the intermediate prerequisites
+                    intermediates_used = []
+                    for req_group in pathway["Intermediate Courses"]:
+                        if isinstance(req_group, list):
+                            # Find the first course from the transcript that satisfies this OR group
+                            for c in req_group:
+                                if c in self.courses:
+                                    intermediates_used.append(c)
+                                    break
+                        else:
+                            if req_group in self.courses:
+                                intermediates_used.append(req_group)
+                                
+                    print(f"      Intermediates fulfilling prerequisites: {intermediates_used}")
+
+        # --- Humanities Printing ---
+        humanities_list = self.reader.get_humanities_courses()
+        humanities_included_in_degree = [course for course in all_used_courses if course in humanities_list]
+        
+        # Use a set to remove duplicates (in case a humanity was used in multiple buckets)
+        unique_humanities = list(set(humanities_included_in_degree))
+        print(f"humanities courses used in degree: {unique_humanities}")
     
     def __constraint_func_mapper(self, constraint: str) -> Callable[[str], BoolRef]:
         match (constraint):
