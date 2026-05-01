@@ -15,7 +15,7 @@ class OldCS():
         self.courses = courses
         self.reader = reader
 
-    def validate(self, degree_type: str):
+    def validate(self, degree_type: str, unknowns: int = 0):
         #Only degree types are AB/SCB
         assert degree_type == "SCB" or degree_type == "AB"
         print("old " + degree_type)
@@ -53,30 +53,37 @@ class OldCS():
         # Print the actual course assignments if satisfied
         if is_sat:
             self.__print_results()
+            #are there unknowns involved? also print alternatives. 
+            if (unknowns > 0):
+                print(f"Found a valid course plan with {unknowns} unknown courses")
+                self.__generate_unknown_alternatives(unknowns)
+
             self.s.pop()
         else:
             print(f"cannot form a valid {degree_type} degree")
             print("trying with an inserted unknown class")
-            self.s.pop()
             # TODO: IMPORTANT need to stop recursion
-            self.__try_with_unknowns(degree_type)
+            self.s.pop()
+            self.__try_with_unknowns(degree_type, unknowns)
+
+
 
         return is_sat
     
-    def __try_with_unknowns(self, degree_type: str, limit_of_unknown: int = 4):
-        count = 0
-        is_sat = False
-        while is_sat == False:
-            print(f"trying with {count + 1} unknowns")
-            self.courses.append(f"Unknown {count + 1}")
-            is_sat = self.validate(degree_type)
-            count += 1
-        print(f"Found a valid course plan with {count} unknown courses")
-        self.__generate_unknown_alternatives()
+    def __try_with_unknowns(self, degree_type: str, num_unknowns: int, limit_of_unknown: int = 4):
+        #TODO: this is kind of garbage code lol
+        if num_unknowns > limit_of_unknown:
+            print("Too many unknowns to build a degree!")
+            return False
+        
+        count = num_unknowns + 1
+        print(f"trying with {num_unknowns + 1} unknowns")
+        self.courses.append(f"Unknown {count}")
+        is_sat = self.validate(degree_type, num_unknowns + 1)
 
+        return is_sat
+        
 
-    # TODO: There is currently a problem with using this along with try with unknowns. I think 
-    # it is related to the model popping?
     def __generate_unknown_alternatives(self, limit: int = 5):
         print("\nSearching for Unknown course placements...")
         
@@ -87,6 +94,7 @@ class OldCS():
         count = 0
         while self.s.check() == sat and count < limit:
             m = self.s.model()
+
             count += 1
             print(f"\n--- Alternative {count} ---")
             
@@ -120,7 +128,7 @@ class OldCS():
                             # We block the pathway-specific variable so it finds a new pathway next time
                             current_unknown_vars.append(var_p)
                 
-                self.__print_results()
+            self.__print_results()
 
             # 3. Block this specific configuration and loop again
             if unknowns_used:
