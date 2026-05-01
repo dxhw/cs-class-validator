@@ -38,7 +38,7 @@
             # 1970 repetition requirement
 
 from util.json_reader import JSONReader, load_all_data
-from big_matrix_old_validator import OldCS
+from old_validator import OldCS
 
 
 
