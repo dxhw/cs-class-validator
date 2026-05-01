@@ -3,6 +3,8 @@ from util.json_reader import JSONReader
 
 from z3 import *
 
+# TODO: we can't fill in unknowns for the intermediates of the pathways ATM because those are statically checked
+
 class OldCS():
     def  __init__(self, year: int, courses: list[str], reader: JSONReader, constraint_dict: dict[str, bool]):
         # pull in the degree JSONS
@@ -13,10 +15,10 @@ class OldCS():
         self.courses = courses
         self.reader = reader
 
-    def validate(self, degree_type: str):
+    def validate(self, degree_type: str, unknowns: int = 0):
         #Only degree types are AB/SCB
         assert degree_type == "SCB" or degree_type == "AB"
-        print("old " + degree_type)
+        print("Looking for old " + degree_type + " requirements")
 
         # Old requirements are only allowed for c/o 2027 and earlier
         if self.year > 2027:
@@ -52,12 +54,114 @@ class OldCS():
         
         # Print the actual course assignments if satisfied
         if is_sat:
-            self.__print_results()
+            if unknowns == 0:
+                self.__print_results()
+            #are there unknowns involved? also print alternatives. 
+            else:
+                print(f"Found a valid course plan with {unknowns} unknown courses")
+                self.__generate_unknown_alternatives()
+
+            self.s.pop()
         else:
             print(f"cannot form a valid {degree_type} degree")
+            print(f"trying with {unknowns + 1} inserted unknown class(es)")
+            self.s.pop()
+            self.__try_with_unknowns(degree_type, unknowns)
 
-        self.s.pop()
+
+
         return is_sat
+    
+    def __try_with_unknowns(self, degree_type: str, num_unknowns: int, limit_of_unknown: int = 4):
+        if num_unknowns > limit_of_unknown:
+            print("Too many unknowns to build a degree!")
+            return False
+        
+        count = num_unknowns + 1
+        self.courses.append(f"Unknown {count}")
+        is_sat = self.validate(degree_type, num_unknowns + 1)
+
+        return is_sat
+        
+
+    def __generate_unknown_alternatives(self, limit: int = 5):
+        print("\nSearching for Unknown course placements...")
+        
+        # Get active requirements
+        active_reqs = [req for req, is_active in self.constraint_dict.items() if is_active]
+        pathway_requirements = self.reader.get_pathways() if "pathways" in active_reqs else []
+
+        # Get a static list of the unknown courses
+        unknown_courses = [c for c in self.courses if c.startswith("Unknown")]
+
+        count = 0
+        while self.s.check() == sat and count < limit:
+            m = self.s.model()
+            count += 1
+            print(f"\n--- Alternative {count} ---")
+            
+            unknowns_used = False
+            
+            # This list will hold equations defining the CURRENT distribution of Unknowns.
+            # e.g., [Sum(Unknowns in intro) == 1, Sum(Unknowns in pathways) == 1, ...]
+            current_distribution_equations = []
+
+            # 1. Check the main requirement buckets
+            for req in active_reqs:
+                if req == "humanities-limit":
+                    continue
+                
+                # Gather the booleans for ALL unknowns in THIS specific requirement
+                unknowns_in_this_req = [If(self.assignment_vars[c][req], 1, 0) for c in unknown_courses]
+                
+                # Create a Z3 expression for the sum
+                sum_expr = Sum(*([0] + unknowns_in_this_req))
+                
+                # Evaluate the actual integer sum in the current model
+                actual_count = m.evaluate(sum_expr)
+                
+                # We enforce the exact count for THIS bucket to our signature
+                current_distribution_equations.append(sum_expr == actual_count)
+
+                # For printing purposes, we only care if the count is > 0
+                if actual_count.as_long() > 0:
+                    unknowns_used = True
+                    print(f"- {actual_count} Unknown(s) filling requirement: {req}")
+
+            # 2. Check the specific Pathway sub-matrix
+            if "pathways" in active_reqs:
+                for pathway in pathway_requirements:
+                    p_name = pathway["Pathway"]
+                    
+                    # Gather the booleans for ALL unknowns in THIS specific pathway
+                    unknowns_in_this_pathway = [
+                        If(Bool(f"use_{c}_for_pathway_{p_name}"), 1, 0) for c in unknown_courses
+                    ]
+                    
+                    sum_expr = Sum(*([0] + unknowns_in_this_pathway))
+                    actual_count = m.evaluate(sum_expr)
+                    
+                    current_distribution_equations.append(sum_expr == actual_count)
+                    
+                    if actual_count.as_long() > 0:
+                        print(f"  -> {actual_count} Unknown(s) specifically in the '{p_name}' pathway")
+                
+            self.__print_results()
+
+            # 3. Block this specific numerical distribution and loop again
+            if unknowns_used:
+                # Tell Z3: "You cannot use this EXACT distribution of Unknowns again."
+                self.s.add(Not(And(*current_distribution_equations)))
+            else:
+                print("- No Unknowns were needed to graduate! The real transcript is sufficient.")
+                break # Stop searching if they can graduate without help
+                
+        if self.s.check() != sat:
+            print("out of possible placements")
+        else:
+            print(f"hit unknown placement limit")
+        print(f"{count} alternative placements found")
+        print("done!")
     
     # this function assumes the constraints are SAT!
     def __print_results(self):
@@ -108,6 +212,9 @@ class OldCS():
                     # The remaining course (which could be a 2nd core, grad, or related) is the additional
                     additional_courses = [c for c in assigned_courses if c != core_course]
                     additional_course = additional_courses[0] if additional_courses else "None"
+
+                    if core_course == "None" and len(additional_courses) == 2:
+                        core_course = additional_courses[1]
                     
                     print(f"      Core: {core_course}")
                     print(f"      Additional: {additional_course}")
@@ -185,7 +292,7 @@ class OldCS():
             # --- Build Path 2 variables: accel ---
             if course == intro_1_accel:
                 taken_0190 = intro_var
-            if course_num >= 200 and is_cs_course:
+            if (course_num >= 200 and is_cs_course) or course.startswith("Unknown"):
                 path2_intro2_pool.append(If(intro_var, 1, 0))
 
         # Safely handle if the student didn't take 0190 or 0200 at all
@@ -251,7 +358,7 @@ class OldCS():
 
         # 3. Exclude invalid courses
         for course in self.courses:
-            if course not in valid_intermediate_courses:
+            if course not in valid_intermediate_courses and not course.startswith("Unknown"):
                 var = self.assignment_vars[course]["intermediate"]
                 self.s.add(Not(var))
 
@@ -300,9 +407,9 @@ class OldCS():
                 var_p = Bool(f"use_{course}_for_pathway_{p_name}")
                 course_pathway_vars[course][p_name] = var_p
 
-                if course in valid_set:
+                if course in valid_set or course.startswith("Unknown"):
                     total_conditions.append(If(var_p, 1, 0))
-                    if course in core_set:
+                    if course in core_set or course.startswith("Unknown"):
                         core_conditions.append(If(var_p, 1, 0))
                 else:
                     # Invalid courses cannot be assigned to this pathway
@@ -376,7 +483,7 @@ class OldCS():
                 course_num = 0
                 
             # 2. Basic Check: Must be a CSCI course >= 1000
-            if course.startswith("CSCI") and course_num >= 1000:
+            if (course.startswith("CSCI") and course_num >= 1000) or course.startswith("Unknown"):
                 valid_conditions.append(If(var, 1, 0))
                 
                 # 3. The Breadth Rule: Exclude courses from chosen pathways
@@ -443,7 +550,7 @@ class OldCS():
                     self.s.add(Not(var))
                     continue
 
-                if is_allowed_dept and (is_intermediate or is_upper_level):
+                if (is_allowed_dept and (is_intermediate or is_upper_level)) or course.startswith("Unknown"):
                     # If valid, we add it to the total pool of selectable courses
                     total_assigned_conditions.append(If(var, 1, 0))
                     
@@ -494,7 +601,7 @@ class OldCS():
                     continue
 
                 # 2. Standard capstones (must be tied to an active pathway)
-                if course in capstone_courses:
+                if course in capstone_courses or course.startswith("Unknown"):
                     active_pathway_conditions = []
                     
                     for pathway in pathway_requirements:
