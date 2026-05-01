@@ -18,7 +18,7 @@ class OldCS():
     def validate(self, degree_type: str, unknowns: int = 0):
         #Only degree types are AB/SCB
         assert degree_type == "SCB" or degree_type == "AB"
-        print("old " + degree_type)
+        print("Looking for old " + degree_type + " requirements")
 
         self.s.push()
 
@@ -52,17 +52,17 @@ class OldCS():
         
         # Print the actual course assignments if satisfied
         if is_sat:
-            self.__print_results()
+            if unknowns == 0:
+                self.__print_results()
             #are there unknowns involved? also print alternatives. 
-            if (unknowns > 0):
+            else:
                 print(f"Found a valid course plan with {unknowns} unknown courses")
-                self.__generate_unknown_alternatives(unknowns)
+                self.__generate_unknown_alternatives()
 
             self.s.pop()
         else:
             print(f"cannot form a valid {degree_type} degree")
-            print("trying with an inserted unknown class")
-            # TODO: IMPORTANT need to stop recursion
+            print(f"trying with {unknowns + 1} inserted unknown class(es)")
             self.s.pop()
             self.__try_with_unknowns(degree_type, unknowns)
 
@@ -71,13 +71,11 @@ class OldCS():
         return is_sat
     
     def __try_with_unknowns(self, degree_type: str, num_unknowns: int, limit_of_unknown: int = 4):
-        #TODO: this is kind of garbage code lol
         if num_unknowns > limit_of_unknown:
             print("Too many unknowns to build a degree!")
             return False
         
         count = num_unknowns + 1
-        print(f"trying with {num_unknowns + 1} unknowns")
         self.courses.append(f"Unknown {count}")
         is_sat = self.validate(degree_type, num_unknowns + 1)
 
@@ -91,56 +89,76 @@ class OldCS():
         active_reqs = [req for req, is_active in self.constraint_dict.items() if is_active]
         pathway_requirements = self.reader.get_pathways() if "pathways" in active_reqs else []
 
+        # Get a static list of the unknown courses
+        unknown_courses = [c for c in self.courses if c.startswith("Unknown")]
+
         count = 0
         while self.s.check() == sat and count < limit:
             m = self.s.model()
-
             count += 1
             print(f"\n--- Alternative {count} ---")
             
-            # We will gather all the True variables for the Unknowns to block them later
-            current_unknown_vars = []
             unknowns_used = False
+            
+            # This list will hold equations defining the CURRENT distribution of Unknowns.
+            # e.g., [Sum(Unknowns in intro) == 1, Sum(Unknowns in pathways) == 1, ...]
+            current_distribution_equations = []
 
-            for course in self.courses:
-                if not course.startswith("Unknown"):
-                    continue  # Skip real courses
+            # 1. Check the main requirement buckets
+            for req in active_reqs:
+                if req == "humanities-limit":
+                    continue
+                
+                # Gather the booleans for ALL unknowns in THIS specific requirement
+                unknowns_in_this_req = [If(self.assignment_vars[c][req], 1, 0) for c in unknown_courses]
+                
+                # Create a Z3 expression for the sum
+                sum_expr = Sum(*([0] + unknowns_in_this_req))
+                
+                # Evaluate the actual integer sum in the current model
+                actual_count = m.evaluate(sum_expr)
+                
+                # We enforce the exact count for THIS bucket to our signature
+                current_distribution_equations.append(sum_expr == actual_count)
 
-                # 1. Check the main requirement buckets
-                for req in active_reqs:
-                    if req == "humanities-limit":
-                        continue
-                        
-                    var = self.assignment_vars[course][req]
-                    if is_true(m.evaluate(var)):
-                        unknowns_used = True
-                        print(f"- {course} is filling requirement: {req}")
-                        current_unknown_vars.append(var)
+                # For printing purposes, we only care if the count is > 0
+                if actual_count.as_long() > 0:
+                    unknowns_used = True
+                    print(f"- {actual_count} Unknown(s) filling requirement: {req}")
 
-                # 2. Check the specific Pathway sub-matrix
-                if "pathways" in active_reqs:
-                    for pathway in pathway_requirements:
-                        p_name = pathway["Pathway"]
-                        var_p = Bool(f"use_{course}_for_pathway_{p_name}")
-                        
-                        if is_true(m.evaluate(var_p)):
-                            print(f"  -> Specifically, {course} is in the '{p_name}' pathway")
-                            # We block the pathway-specific variable so it finds a new pathway next time
-                            current_unknown_vars.append(var_p)
+            # 2. Check the specific Pathway sub-matrix
+            if "pathways" in active_reqs:
+                for pathway in pathway_requirements:
+                    p_name = pathway["Pathway"]
+                    
+                    # Gather the booleans for ALL unknowns in THIS specific pathway
+                    unknowns_in_this_pathway = [
+                        If(Bool(f"use_{c}_for_pathway_{p_name}"), 1, 0) for c in unknown_courses
+                    ]
+                    
+                    sum_expr = Sum(*([0] + unknowns_in_this_pathway))
+                    actual_count = m.evaluate(sum_expr)
+                    
+                    current_distribution_equations.append(sum_expr == actual_count)
+                    
+                    if actual_count.as_long() > 0:
+                        print(f"  -> {actual_count} Unknown(s) specifically in the '{p_name}' pathway")
                 
             self.__print_results()
 
-            # 3. Block this specific configuration and loop again
+            # 3. Block this specific numerical distribution and loop again
             if unknowns_used:
-                # Tell Z3: "You cannot use this EXACT combination of Unknowns again."
-                self.s.add(Not(And(*current_unknown_vars)))
+                # Tell Z3: "You cannot use this EXACT distribution of Unknowns again."
+                self.s.add(Not(And(*current_distribution_equations)))
             else:
                 print("- No Unknowns were needed to graduate! The real transcript is sufficient.")
                 break # Stop searching if they can graduate without help
+                
         if self.s.check() != sat:
             print("out of possible placements")
         else:
-            print("hit unknown placement limit")
+            print(f"hit unknown placement limit")
+        print(f"{count} alternative placements found")
         print("done!")
     
     # this function assumes the constraints are SAT!
