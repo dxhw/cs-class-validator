@@ -62,7 +62,7 @@ class OldCS():
         if is_sat:
             self.__print_results()
         else:
-            print("unsat")
+            print(f"cannot form a valid {degree_type} degree")
 
         self.s.pop()
         return is_sat
@@ -493,8 +493,8 @@ class OldCS():
             for course in self.courses:
                 var = self.assignment_vars[course]["capstone"]
 
-                # 1. Universally valid capstones (1970A and 1970B)
-                if course in ["CSCI 1970A", "CSCI 1970B"]:
+                # 1. Universally valid capstones (1970(1) and 1970(2))
+                if course in ["CSCI 1970(1)", "CSCI 1970(2)"]:
                     valid_capstones.append(If(var, 1, 0))
                     continue
 
