@@ -113,15 +113,10 @@ class OldCS():
                     # Find which transcript courses fulfilled the intermediate prerequisites
                     intermediates_used = []
                     for req_group in pathway["Intermediate Courses"]:
-                        if isinstance(req_group, list):
-                            # Find the first course from the transcript that satisfies this OR group
-                            for c in req_group:
-                                if c in self.courses:
-                                    intermediates_used.append(c)
-                                    break
-                        else:
-                            if req_group in self.courses:
-                                intermediates_used.append(req_group)
+                        for c in req_group:
+                            if c in self.courses:
+                                intermediates_used.append(c)
+                                break
                                 
                     print(f"      Intermediates fulfilling prerequisites: {intermediates_used}")
 
@@ -153,6 +148,7 @@ class OldCS():
                 raise RuntimeError(f"invalid constraint name: {constraint}")
             
     def __oldIntroConstraint(self, degree_type: str) -> BoolRef:
+        # we are ignoring the existence of 112 for this model
         intro_1_standard = {"CSCI 0111", "CSCI 0150", "CSCI 0170"}
         intro_1_accel = "CSCI 0190"
         intro_2_standard = "CSCI 0200"
@@ -393,7 +389,7 @@ class OldCS():
                     )
                     
                     if course in all_pathway_courses:
-                        # Re-create the exact Z3 boolean variable from your pathways constraint!
+                        # same Z3 boolean variable from pathways constraint!
                         p_active = Bool(f"pathway_{p_name}_active")
                         
                         # Tell Z3: "If this pathway is True, then this course MUST be False here"
@@ -436,9 +432,15 @@ class OldCS():
                     (course in non_cs_courses)
                 )
                 is_intermediate = course in all_intermediates
-                is_upper_level = 1000 <= course_num < 3000
+                is_upper_level = course_num >= 1000
 
                 # 4. Categorize valid courses
+
+                # this course cannot be CSCI 1970
+                if course.startswith("CSCI 1970"):
+                    self.s.add(Not(var))
+                    continue
+
                 if is_allowed_dept and (is_intermediate or is_upper_level):
                     # If valid, we add it to the total pool of selectable courses
                     total_assigned_conditions.append(If(var, 1, 0))
@@ -484,6 +486,7 @@ class OldCS():
                 var = self.assignment_vars[course]["capstone"]
 
                 # 1. Universally valid capstones (1970(1) and 1970(2))
+                # we assume that students are doing research in something that is capstoneable
                 if course in ["CSCI 1970(1)", "CSCI 1970(2)"]:
                     valid_capstones.append(If(var, 1, 0))
                     continue
