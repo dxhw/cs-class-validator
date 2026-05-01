@@ -56,6 +56,8 @@ class OldCS():
         # Print the actual course assignments if satisfied
         if is_sat:
             self.__print_results()
+        else:
+            print(f"cannot form a valid {degree_type} degree")
 
         self.s.pop()
         return is_sat
