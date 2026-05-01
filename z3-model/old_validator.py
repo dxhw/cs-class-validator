@@ -3,18 +3,8 @@ from util.json_reader import JSONReader
 
 from z3 import *
 
-DEFAULT_DICT = {
-    "intro": True,
-    "intermediate": True,
-    "pathways": True,
-    "upper-level": True,
-    "additional": True,
-    "capstone": True,
-    "humanities-limit": True
-}
-
 class OldCS():
-    def  __init__(self, year: int, courses: list[str], reader: JSONReader, constraint_dict: dict[str, bool] = DEFAULT_DICT):
+    def  __init__(self, year: int, courses: list[str], reader: JSONReader, constraint_dict: dict[str, bool]):
         # pull in the degree JSONS
 
         self.s = Solver()
@@ -53,7 +43,7 @@ class OldCS():
             constraint_func = self.__constraint_func_mapper(req)
             self.s.add(constraint_func(degree_type))
 
-        # no double dipping (except intermediates and capstone)
+        # no double dipping (except capstone)
         self.__doubleDippingConstraint()
 
         is_sat = self.s.check() == sat
@@ -177,7 +167,7 @@ class OldCS():
 
         for course in self.courses:
             intro_var = self.assignment_vars[course]["intro"]
-            total_intros.append(If(var, 1, 0))
+            total_intros.append(If(intro_var, 1, 0))
 
             # Extract the course number to check the ">= 0200" rule
             # (e.g., "CSCI 0320" -> 320)
@@ -593,21 +583,8 @@ class OldCS():
             # count how many restricted buckets this course is placed into
             restricted_count = Sum(*[If(b, 1, 0) for b in restricted_bools])
             
-            # pathways can have intermediate courses that are used as intermediates
-            if "pathways" in restricted_reqs and "intermediate" in restricted_reqs:
-                
-                is_in_pathway = self.assignment_vars[course]["pathways"]
-                is_in_intermediate = self.assignment_vars[course]["intermediate"]
-                
-                # If it is used for BOTH an intermediate AND a pathway, the limit is 2. 
-                # Otherwise, it must be strictly <= 1."
-                self.s.add(
-                    If(
-                        And(is_in_pathway, is_in_intermediate),
-                        restricted_count <= 2,
-                        restricted_count <= 1
-                    )
-                )
-            else:
-                # Fallback if pathways or intermediates aren't active in this validation
-                self.s.add(restricted_count <= 1)
+            # pathways can share intermediates with other parts of the requirements
+            # but this is not actually relevant with how we've built the model
+            # since we aren't using Z3 variables for those, so we can ignore that here
+            
+            self.s.add(restricted_count <= 1)

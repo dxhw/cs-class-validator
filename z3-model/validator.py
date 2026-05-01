@@ -17,35 +17,25 @@
 
 # get which constraints user cares about (default all TRUE dictionary)
 
-# Constraints:
-#   OLD:
-#       SCB:
-            # intro sequence (2 courses)
-            # intermediate (5 courses) - 1 from each category
-            # 2 pathways
-            # additional 1000+ (not in pathways)
-            # three additional courses
-            # humanities requirement (4)
-            # 1970 repetition requirement
-            # capstone (in pathway)
-        # AB:
-            # intro sequence (2 courses)
-            # intermediate (3 courses) - 2 categories+
-            # 1 pathways
-            # additional 1000+ (not in pathway)
-            # one additional course
-            # humanities requirement (2)
-            # 1970 repetition requirement
-
 from util.json_reader import JSONReader
 from util.schedule_fetcher import ScheduleFetcher
 
 from old_validator import OldCS
 
+DEFAULT_OLD_CONSTRAINTS_DICT = {
+    "intro": True,
+    "intermediate": True,
+    "pathways": True,
+    "upper-level": True,
+    "additional": True,
+    "capstone": True,
+    "humanities-limit": True
+}
+
 reader = JSONReader()
 schedules = ScheduleFetcher()
 courses = schedules.get_json("doren_schedule")
-old_validator = OldCS(2026, courses, reader)
+old_validator = OldCS(2026, courses, reader, DEFAULT_OLD_CONSTRAINTS_DICT)
 old_validator.validate("SCB")
 
 
