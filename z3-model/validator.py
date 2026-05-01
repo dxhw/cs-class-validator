@@ -41,11 +41,19 @@ from util.json_reader import JSONReader
 from util.schedule_fetcher import ScheduleFetcher
 
 from old_validator import OldCS
+from new_validator import NewCS
 
 reader = JSONReader()
 schedules = ScheduleFetcher()
-courses = schedules.get_json("doren_schedule")
-old_validator = OldCS(2026, courses, reader)
+d_courses = schedules.get_json("doren_schedule")
+old_validator = OldCS(2026, d_courses, reader)
 old_validator.validate("SCB")
+print("\n+=============================+\n")
 
+new_validator = NewCS(2026, d_courses, reader)
+new_validator.validate("SCB")
+print("\n+=============================+\n")
 
+some_courses = schedules.get_json("working_new_scb")
+newer_validator = NewCS(2026, some_courses, reader)
+newer_validator.validate("SCB")

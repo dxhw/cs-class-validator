@@ -28,12 +28,14 @@ class OldCS():
         assert degree_type == "SCB" or degree_type == "AB"
         print("old " + degree_type)
 
-        self.s.push()
-
         # Old requirements are only allowed for c/o 2027 and earlier
-        self.s.add(self.year < 2028)
         if self.year > 2027:
             print("These requirements are only available to students in classes 2024-2027, so this student is not eligible for them")
+            return False
+
+        self.s.push()
+
+        
 
         # Create the boolean matrix
         # for each course, there is a set of reqs it may or may not fulfill, so make a table of them
@@ -177,7 +179,7 @@ class OldCS():
 
         for course in self.courses:
             intro_var = self.assignment_vars[course]["intro"]
-            total_intros.append(If(var, 1, 0))
+            total_intros.append(If(intro_var, 1, 0))
 
             # Extract the course number to check the ">= 0200" rule
             # (e.g., "CSCI 0320" -> 320)

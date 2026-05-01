@@ -122,9 +122,9 @@ class JSONReader:
         """Get intermediate course requirements (by category)."""
         return self.get("intermediate") or []
     
-    def get_new_intermediate(self) -> List[Dict]:
-        """Get new intermediate course requirements."""
-        return self.get("new_intermediate") or []
+    def get_new_foundations(self) -> List[Dict]:
+        """Get new foundations course requirements."""
+        return self.get("new_foundations") or []
     
     def get_humanities_courses(self) -> List[str]:
         """Get list of humanities courses."""
