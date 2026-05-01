@@ -21,6 +21,8 @@ from util.json_reader import JSONReader
 from util.schedule_fetcher import ScheduleFetcher
 
 from old_validator import OldCS
+from new_validator import NewCS
+
 
 DEFAULT_OLD_CONSTRAINTS_DICT = {
     "intro": True,
@@ -32,6 +34,16 @@ DEFAULT_OLD_CONSTRAINTS_DICT = {
     "humanities-limit": True
 }
 
+DEFAULT_NEW_CONSTRAINTS_DICT = {
+    "intro": True,
+    "foundations": True,
+    "math": True,
+    "elective": True,
+    "technical": True,
+    "capstone": True,
+    "humanities-limit": True
+}
+
 reader = JSONReader()
 schedules = ScheduleFetcher()
 d_courses = schedules.get_json("doren_schedule")
@@ -39,10 +51,10 @@ old_validator = OldCS(2026, d_courses, reader, DEFAULT_OLD_CONSTRAINTS_DICT)
 old_validator.validate("SCB")
 print("\n+=============================+\n")
 
-new_validator = NewCS(2026, d_courses, reader)
+new_validator = NewCS(2026, d_courses, reader, DEFAULT_NEW_CONSTRAINTS_DICT)
 new_validator.validate("SCB")
 print("\n+=============================+\n")
 
 some_courses = schedules.get_json("working_new_scb")
-newer_validator = NewCS(2026, some_courses, reader)
+newer_validator = NewCS(2026, some_courses, reader, DEFAULT_NEW_CONSTRAINTS_DICT)
 newer_validator.validate("SCB")

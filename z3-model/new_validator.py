@@ -24,33 +24,8 @@ from util.json_reader import JSONReader
 
 from z3 import *
 
-DEFAULT_DICT = {
-    "intro": True,
-    "foundations": True,
-    "math": True,
-    "elective": True,
-    "technical": True,
-    "capstone": True,
-    "humanities-limit": True
-}
-
-            # case "intro":
-            #     return self.__newIntroConstraint
-            # case "foundations":
-            #     return self.__newFoundationsConstraint
-            # case "math":
-            #     return self.__newMathConstraint
-            # case "elective":
-            #     return self.__newElectiveConstraint
-            # case "technical":
-            #     return self.__newTechnicalConstraint
-            # case "capstone":
-            #     return self.__newCapstoneConstraint
-            # case "humanities-limit":
-            #     return self.__humanitiesLimitConstraint
-
 class NewCS():
-    def  __init__(self, year: int, courses: list[str], reader: JSONReader, constraint_dict: dict[str, bool] = DEFAULT_DICT):
+    def  __init__(self, year: int, courses: list[str], reader: JSONReader, constraint_dict: dict[str, bool]):
         self.s = Solver()
         self.constraint_dict = constraint_dict
         self.year = year 
