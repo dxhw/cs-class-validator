@@ -6,14 +6,14 @@
 
 # manual check for new requirements SCB systems != 32
 
-
-import json
-
 # pull in the JSONS
 
 # get user class year
 
 # get user data (demo with JSON)
+# for multiple instances of CSCI1970, turn the first one into CSCI1970A, the second into CSCI1970B, and drop remaining ones
+# (you can count up to two instances of 1970 towards a degree)
+# then, we will need to reconvert that back at the end
 
 # get which constraints user cares about (default all TRUE dictionary)
 
@@ -38,17 +38,12 @@ import json
             # 1970 repetition requirement
 
 from util.json_reader import JSONReader, load_all_data
+from big_matrix_old_validator import OldCS
 
 # Method 1: Create a reader instance
 reader = JSONReader()
-data = reader.load_all()  # Load all files at once
+courses = ...
+old_validator = OldCS(2026, courses, reader)
+old_validator.validate("SCB")
 
-# Access specific data
-pathways = reader.get_pathways()
-capstone_courses = reader.get_capstone_courses()
-print(capstone_courses)
-
-# Method 2: Use the convenience function
-all_data = load_all_data()
-print(all_data)
 

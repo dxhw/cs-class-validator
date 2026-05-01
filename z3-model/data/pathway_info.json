@@ -86,7 +86,7 @@
             "DATA 2060"
         ],
         "Intermediate Courses": [
-            "CSCI 0220",
+            ["CSCI 0220"],
             ["CSCI 0500", "CSCI 1010"],
             ["CSCI 1450", "APMA 1650", "APMA 1655"]
         ]
@@ -250,8 +250,8 @@
             "CSCI 1951X"
         ],
         "Intermediate Courses": [
-            "CSCI 0220",
-            "CSCI 0320",
+            ["CSCI 0220"],
+            ["CSCI 0320"],
             ["CSCI 0300", "CSCI 0330"]
         ]
     },
@@ -332,7 +332,7 @@
             "CSCI 1952Q"
         ],
         "Intermediate Courses": [
-            "CSCI 1010",
+            ["CSCI 1010"],
             ["CSCI 1450", "APMA 1650", "APMA 1655"],
             ["CSCI 0530", "MATH 0520", "MATH 0540"]
         ]
