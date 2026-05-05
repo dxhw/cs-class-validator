@@ -86,27 +86,6 @@ DEFAULT_NEW_MATH_CS_CONSTRAINTS_DICT = {
     "capstone": True,
 }
 
-
-
-            #             case "intro":
-            #     return self.__newIntroConstraint
-            # case "foundations":
-            #     return self.__newFoundationsConstraint
-            # case "multi":
-            #     return self.__newMultiConstraint
-            # case "linear":
-            #     return self.__newLinearConstraint
-            # case "technical":
-            #     return self.__newTechnicalConstraint
-            # case "abstract":
-            #     return self.__newAbstractConstraint
-            # case "upper-math":
-            #     return self.__newUpperMathConstraint
-            # case "elective":
-            #     return self.__newElectiveConstraint
-            # case "capstone":
-            #     return self.__newCapstoneConstraint
-
 # reader = JSONReader()
 # schedules = ScheduleFetcher()
 # d_courses = schedules.get_json("doren_schedule")
