@@ -14,6 +14,10 @@ class OldCS():
         self.year = year # if you are above class of 2027, these requirements are not available
         self.courses = courses
         self.reader = reader
+        
+        # c/o 2026 has no capstones
+        if self.year == 2026:
+            self.constraint_dict["capstone"] = False
 
     def validate(self, degree_type: str, unknowns: int = 0):
         #Only degree types are AB/SCB
@@ -24,6 +28,10 @@ class OldCS():
         if self.year > 2027:
             print("These requirements are only available to students in classes 2024-2027, so this student is not eligible for them")
             return False
+        
+        # capstones are not required for ABs
+        if degree_type == "AB":
+            self.constraint_dict["capstone"] = False
 
         self.s.push()
 
@@ -94,7 +102,6 @@ class OldCS():
             self.s.pop()
         else:
             print(f"cannot form a valid {degree_type} degree")
-            print(f"trying with {unknowns + 1} inserted unknown class(es)")
             self.s.pop()
             self.__try_with_unknowns(degree_type, unknowns)
 
@@ -225,13 +232,14 @@ class OldCS():
         for inter in all_intermediates:
             self.s.add(Sum([If(self.unknown_identities[u][inter], 1, 0) for u in unknown_courses]) <= 1)
 
-    def __try_with_unknowns(self, degree_type: str, num_unknowns: int, limit_of_unknown: int = 4):
-        if num_unknowns > limit_of_unknown:
+    def __try_with_unknowns(self, degree_type: str, num_unknowns: int, limit_of_unknown: int = 6):
+        if num_unknowns > limit_of_unknown - 1:
             print("Too many unknowns to build a degree!")
             return False
         
         count = num_unknowns + 1
         self.courses.append(f"Unknown {count}")
+        print(f"trying with {count} inserted unknown class(es)")
         is_sat = self.validate(degree_type, num_unknowns + 1)
 
         return is_sat
