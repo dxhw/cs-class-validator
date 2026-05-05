@@ -3,13 +3,11 @@ from util.json_reader import JSONReader
 
 from z3 import *
 
-# TODO: we can't fill in unknowns for the intermediates of the pathways ATM because those are statically checked
-
 class OldCS():
     def  __init__(self, year: int, courses: list[str], reader: JSONReader, constraint_dict: dict[str, bool]):
         # pull in the degree JSONS
 
-        self.s = Solver()
+        self.s = Optimize()
         self.constraint_dict = constraint_dict
         self.year = year # if you are above class of 2027, these requirements are not available
         self.courses = courses
@@ -27,7 +25,10 @@ class OldCS():
 
         self.s.push()
 
-        
+        # if there are any unknown courses, we need to track their identities if they are
+        # intermediates specifically because that cuts across multiple constraints
+        if any([c.startswith("Unknown") for c in self.courses]):
+            self.__build_intermediate_unknown_identities()
 
         # Create the boolean matrix
         # for each course, there is a set of reqs it may or may not fulfill, so make a table of them
@@ -50,6 +51,33 @@ class OldCS():
         # no double dipping (except capstone)
         self.__doubleDippingConstraint()
 
+        # Optimization so that we prioritize using real classes to fill pathways
+        real_courses = [c for c in self.courses if not c.startswith("Unknown")]
+        optimization_scores = []
+        
+        for c in real_courses:
+            for req in active_reqs:
+                if req == "humanities-limit":
+                    continue # Ignore dummy bounds
+                
+                # Weight core/pathways heavily to pull real courses here first
+                if req in ["intermediate", "pathways", "capstone"]:
+                    weight = 10
+                # Give electives a lower weight so they become the dump-stat for Unknowns
+                elif req == "upper-level":
+                    weight = 2
+                elif req in ["additional", "intro"]:
+                    weight = 1
+                else:
+                    weight = 1
+                    
+                # If a real course is used for this requirement, it adds the weight to the score
+                optimization_scores.append(If(self.assignment_vars[c][req], weight, 0))
+
+        if optimization_scores:
+            # Tell Z3 to maximize the total weight across the course plan
+            self.s.maximize(Sum(*([0] + optimization_scores)))
+
         is_sat = self.s.check() == sat
         
         # Print the actual course assignments if satisfied
@@ -68,100 +96,7 @@ class OldCS():
             self.s.pop()
             self.__try_with_unknowns(degree_type, unknowns)
 
-
-
         return is_sat
-    
-    def __try_with_unknowns(self, degree_type: str, num_unknowns: int, limit_of_unknown: int = 4):
-        if num_unknowns > limit_of_unknown:
-            print("Too many unknowns to build a degree!")
-            return False
-        
-        count = num_unknowns + 1
-        self.courses.append(f"Unknown {count}")
-        is_sat = self.validate(degree_type, num_unknowns + 1)
-
-        return is_sat
-        
-
-    def __generate_unknown_alternatives(self, limit: int = 5):
-        print("\nSearching for Unknown course placements...")
-        
-        # Get active requirements
-        active_reqs = [req for req, is_active in self.constraint_dict.items() if is_active]
-        pathway_requirements = self.reader.get_pathways() if "pathways" in active_reqs else []
-
-        # Get a static list of the unknown courses
-        unknown_courses = [c for c in self.courses if c.startswith("Unknown")]
-
-        count = 0
-        while self.s.check() == sat and count < limit:
-            m = self.s.model()
-            count += 1
-            print(f"\n--- Alternative {count} ---")
-            
-            unknowns_used = False
-            
-            # This list will hold equations defining the CURRENT distribution of Unknowns.
-            # e.g., [Sum(Unknowns in intro) == 1, Sum(Unknowns in pathways) == 1, ...]
-            current_distribution_equations = []
-
-            # 1. Check the main requirement buckets
-            for req in active_reqs:
-                if req == "humanities-limit":
-                    continue
-                
-                # Gather the booleans for ALL unknowns in THIS specific requirement
-                unknowns_in_this_req = [If(self.assignment_vars[c][req], 1, 0) for c in unknown_courses]
-                
-                # Create a Z3 expression for the sum
-                sum_expr = Sum(*([0] + unknowns_in_this_req))
-                
-                # Evaluate the actual integer sum in the current model
-                actual_count = m.evaluate(sum_expr)
-                
-                # We enforce the exact count for THIS bucket to our signature
-                current_distribution_equations.append(sum_expr == actual_count)
-
-                # For printing purposes, we only care if the count is > 0
-                if actual_count.as_long() > 0:
-                    unknowns_used = True
-                    print(f"- {actual_count} Unknown(s) filling requirement: {req}")
-
-            # 2. Check the specific Pathway sub-matrix
-            if "pathways" in active_reqs:
-                for pathway in pathway_requirements:
-                    p_name = pathway["Pathway"]
-                    
-                    # Gather the booleans for ALL unknowns in THIS specific pathway
-                    unknowns_in_this_pathway = [
-                        If(Bool(f"use_{c}_for_pathway_{p_name}"), 1, 0) for c in unknown_courses
-                    ]
-                    
-                    sum_expr = Sum(*([0] + unknowns_in_this_pathway))
-                    actual_count = m.evaluate(sum_expr)
-                    
-                    current_distribution_equations.append(sum_expr == actual_count)
-                    
-                    if actual_count.as_long() > 0:
-                        print(f"  -> {actual_count} Unknown(s) specifically in the '{p_name}' pathway")
-                
-            self.__print_results()
-
-            # 3. Block this specific numerical distribution and loop again
-            if unknowns_used:
-                # Tell Z3: "You cannot use this EXACT distribution of Unknowns again."
-                self.s.add(Not(And(*current_distribution_equations)))
-            else:
-                print("- No Unknowns were needed to graduate! The real transcript is sufficient.")
-                break # Stop searching if they can graduate without help
-                
-        if self.s.check() != sat:
-            print("out of possible placements")
-        else:
-            print(f"hit unknown placement limit")
-        print(f"{count} alternative placements found")
-        print("done!")
     
     # this function assumes the constraints are SAT!
     def __print_results(self):
@@ -219,11 +154,23 @@ class OldCS():
                     print(f"      Core: {core_course}")
                     print(f"      Additional: {additional_course}")
                     
-                    # Find which transcript courses fulfilled the intermediate prerequisites
+                    # Find which transcript courses Z3 used for the intermediate prerequisites
                     intermediates_used = []
-                    for req_group in pathway["Intermediate Courses"]:
-                        for c in req_group:
-                            if c in self.courses:
+                    for idx, req_group in enumerate(pathway["Intermediate Courses"]):
+                        for c in self.courses:
+
+                            # if the course plan included the course already, we did it statically
+                            # so we can't use Z3 variables for this
+                            if c in req_group:
+                                intermediates_used.append(c)
+                                break
+                            
+                            # The course was an unknown
+                            # Reconstruct the string name of the Z3 variable
+                            var_intermed = Bool(f"use_{c}_for_pathway_{p_name}_intermed_{idx}")
+                            
+                            # Ask the model if this course was chosen
+                            if is_true(m.evaluate(var_intermed)):
                                 intermediates_used.append(c)
                                 break
                                 
@@ -236,6 +183,162 @@ class OldCS():
         # Use a set to remove duplicates (in case a humanity was used in multiple buckets)
         unique_humanities = list(set(humanities_included_in_degree))
         print(f"humanities courses used in degree: {unique_humanities}")
+        
+    ################################### UNKNOWN HANDLING #######################################
+
+    def __build_intermediate_unknown_identities(self):
+        """Creates a restricted Z3 boolean matrix assigning a specific or 'OTHER' identity to each Unknown."""
+        
+        # 1. Set of intermediate courses
+        all_intermediates = self.reader.get_flat_intermediates()
+
+        # 2. Setup the identity mapping
+        self.unknown_identities = {} # dictionary for mapping unknowns to course identities
+        unknown_courses = [c for c in self.courses if c.startswith("Unknown")]
+        real_taken_courses = [c for c in self.courses if not c.startswith("Unknown")]
+
+        for u in unknown_courses:
+            self.unknown_identities[u] = {}
+            
+            # Add variables for the specific catalog courses
+            for inter in all_intermediates:
+                var = Bool(f"identity_{u}_is_{inter}")
+                self.unknown_identities[u][inter] = var
+                
+                # Rule A: Cannot be a course the student already took
+                if inter in real_taken_courses:
+                    self.s.add(Not(var))
+
+            # WILDCARD (we don't care about tracking other courses)
+            # This represents any course in the universe NOT in our catalog
+            var_other = Bool(f"identity_{u}_is_OTHER")
+            self.unknown_identities[u]["OTHER"] = var_other
+
+            # Rule B: Every Unknown must resolve to EXACTLY ONE identity (including OTHER)
+            all_identities = list(self.unknown_identities[u].values())
+            self.s.add(Sum([If(var, 1, 0) for var in all_identities]) == 1)
+
+        # Rule C: Unknowns cannot duplicate SPECIFIC courses 
+        # (But multiple Unknowns CAN be "OTHER"!)
+        for inter in all_intermediates:
+            self.s.add(Sum([If(self.unknown_identities[u][inter], 1, 0) for u in unknown_courses]) <= 1)
+
+    def __try_with_unknowns(self, degree_type: str, num_unknowns: int, limit_of_unknown: int = 4):
+        if num_unknowns > limit_of_unknown:
+            print("Too many unknowns to build a degree!")
+            return False
+        
+        count = num_unknowns + 1
+        self.courses.append(f"Unknown {count}")
+        is_sat = self.validate(degree_type, num_unknowns + 1)
+
+        return is_sat
+
+    def __generate_unknown_alternatives(self, limit: int = 5):
+        print("\nSearching for Unknown course placements...")
+        
+        # Get active requirements
+        active_reqs = [req for req, is_active in self.constraint_dict.items() if is_active]
+        pathway_requirements = self.reader.get_pathways() if "pathways" in active_reqs else []
+
+        # Get a static list of the unknown courses
+        unknown_courses = [c for c in self.courses if c.startswith("Unknown")]
+
+        count = 0
+        while self.s.check() == sat and count < limit:
+            m = self.s.model()
+            count += 1
+            print(f"\n--- Alternative {count} ---")
+            
+            unknowns_used = False
+            
+            # This list will hold equations defining the CURRENT distribution of Unknowns.
+            # e.g., [Sum(Unknowns in intro) == 1, Sum(Unknowns in pathways) == 1, ...]
+            current_distribution_equations = []
+
+            # 1. Check the main requirement buckets
+            for req in active_reqs:
+                if req == "humanities-limit":
+                    continue
+                
+                # Gather the booleans for ALL unknowns in THIS specific requirement
+                unknowns_in_this_req = [If(self.assignment_vars[c][req], 1, 0) for c in unknown_courses]
+                
+                # Create a Z3 expression for the sum
+                sum_expr = Sum(*([0] + unknowns_in_this_req))
+                
+                # Evaluate the actual integer sum in the current model
+                actual_count = m.evaluate(sum_expr)
+                
+                # We enforce the exact count for THIS bucket to our signature
+                current_distribution_equations.append(sum_expr == actual_count)
+
+                # For printing purposes, we only care if the count is > 0
+                if actual_count.as_long() > 0:
+                    unknowns_used = True
+                    print(f"- {actual_count} Unknown(s) filling requirement: {req}")
+
+            # 2. Check the specific Pathway sub-matrix
+            if "pathways" in active_reqs:
+                for pathway in pathway_requirements:
+                    p_name = pathway["Pathway"]
+                    
+                    # Gather the booleans for ALL unknowns in THIS pathway (Core/Additional)
+                    unknowns_in_this_pathway = [
+                        If(Bool(f"use_{c}_for_pathway_{p_name}"), 1, 0) for c in unknown_courses
+                    ]
+                    
+                    sum_expr = Sum(*([0] + unknowns_in_this_pathway))
+                    actual_count = m.evaluate(sum_expr)
+                    
+                    current_distribution_equations.append(sum_expr == actual_count)
+                    
+                    if actual_count.as_long() > 0:
+                        print(f"  -> {actual_count} Unknown(s) specifically in the '{p_name}' pathway")
+
+                    intermediates_statically_met = True
+                    for req in pathway["Intermediate Courses"]:
+                        if not any(c in self.courses for c in req):
+                            intermediates_statically_met = False
+                            break
+
+                    # Track Unknowns used for pathway intermediates
+                    if not intermediates_statically_met:
+                        for idx, req_group in enumerate(pathway["Intermediate Courses"]):
+                            # if statically met, skip
+                            if any(c in req_group for c in self.courses):
+                                continue
+
+                            unknowns_in_this_intermed = [
+                                If(Bool(f"use_{c}_for_pathway_{p_name}_intermed_{idx}"), 1, 0) for c in unknown_courses
+                            ]
+                            sum_expr_int = Sum(*([0] + unknowns_in_this_intermed))
+                            actual_count_int = m.evaluate(sum_expr_int)
+                            
+                            # Enforce this count for the blocker signature
+                            current_distribution_equations.append(sum_expr_int == actual_count_int)
+                            
+                            if actual_count_int.as_long() > 0:
+                                print(f"  -> {actual_count_int} Unknown(s) specifically in '{p_name}' intermediate prereq {idx+1}")
+                
+            self.__print_results()
+
+            # 3. Block this specific numerical distribution and loop again
+            if unknowns_used:
+                # Tell Z3: "You cannot use this EXACT distribution of Unknowns again."
+                self.s.add(Not(And(*current_distribution_equations)))
+            else:
+                print("- No Unknowns were needed to graduate! The real transcript is sufficient.")
+                break # Stop searching if they can graduate without help
+                
+        if self.s.check() != sat:
+            print("out of possible placements")
+        else:
+            print(f"hit unknown placement limit")
+        print(f"{count} alternative placements found")
+        print("done!")
+
+    ############################# CONSTRAINTS ########################################
     
     def __constraint_func_mapper(self, constraint: str) -> Callable[[str], BoolRef]:
         match (constraint):
@@ -300,6 +403,13 @@ class OldCS():
         var_0200 = taken_0200 if taken_0200 is not False else BoolVal(False)
         var_0190 = taken_0190 if taken_0190 is not False else BoolVal(False)
 
+        # If took both 19 and 200, use those as the intro courses no matter what
+        took_both = taken_0200 is not False and taken_0190 is not False
+        
+        # If they took both, we require both of their intro variables to be True. 
+        # Otherwise, we just pass True (which has no effect in an And statement).
+        override_rule = And(var_0190, var_0200) if took_both else BoolVal(True)
+
         # Rule 1: We must select EXACTLY 2 courses for the intro requirement globally.
         # (Adding a literal 0 to the lists prevents Z3 from crashing if the student 
         # took no valid courses and the lists are completely empty).
@@ -316,37 +426,45 @@ class OldCS():
         # The overall requirement is satisfied if we have exactly 2 courses 
         # AND one of the paths is valid.
         
-        return And(rule_exactly_two, Or(path1_valid, path2_valid)) # type: ignore
+        return And(rule_exactly_two, Or(path1_valid, path2_valid), override_rule) # type: ignore
 
     def __oldIntermediateConstraint(self, degree_type: str) -> BoolRef:
         intermediate_requirements = self.reader.get_intermediate()
+        all_intermediates = self.reader.get_flat_intermediates()
 
         valid_intermediate_courses = set()
         all_slot_sums = []
         category_active_vars = []
 
         # 1. Parse JSON and build logical slots
+        # The categories are Foundations/Math/Systems
         for category_data in intermediate_requirements:
-            course_groups = category_data["Courses"]
+            
+            # the courses in these groups cannot be used together (e.g., MATH 520 + 540)
+            course_groups = category_data["Courses"] 
             cat_slot_sums = []
 
-            # iterate through each group
             for group in course_groups:
                 slot_vars = []
-                #extract all of the courses
-                for course in group:
-                    valid_intermediate_courses.add(course)
+                for course in self.courses:
+                    var = self.assignment_vars[course]["intermediate"]
                     
-                    #add an intermediate variable for each course
-                    if course in self.courses:
-                        var = self.assignment_vars[course]["intermediate"]
+                    if course.startswith("Unknown"):
+                        # Does this Unknown's assigned identity exist in this group?
+                        is_in_group = Or([
+                            self.unknown_identities[course][c] 
+                            for c in group if c in all_intermediates
+                        ])
+                        # If the course is used for intermediate AND its identity matches, it counts!
+                        slot_vars.append(If(And(var, is_in_group), 1, 0))
+                        
+                    elif course in group:
+                        valid_intermediate_courses.add(course)
                         slot_vars.append(If(var, 1, 0))
 
                 if slot_vars:
-                    # Enforce that a student gets AT MOST 1 credit per sub-list
                     slot_sum = Sum(*slot_vars)
                     self.s.add(slot_sum <= 1)
-                    
                     cat_slot_sums.append(slot_sum)
                     all_slot_sums.append(slot_sum)
 
@@ -381,6 +499,7 @@ class OldCS():
     
     def __oldPathwaysConstraint(self, degree_type: str) -> BoolRef:
         pathway_requirements = self.reader.get_pathways()
+        all_intermediates = self.reader.get_flat_intermediates()
 
         pathway_active_vars = []
         
@@ -415,36 +534,73 @@ class OldCS():
                     # Invalid courses cannot be assigned to this pathway
                     self.s.add(Not(var_p))
 
-            # 2. STATIC INTERMEDIATE CHECK
-            # Because intermediates can overlap, they don't consume our Z3 variables.
-            # We just need to check if the student's transcript has them.
+            # If we can meet intermediate requirements without unknowns, we prefer that
+            # because it makes our processing easy and static
+            # 2a. STATIC INTERMEDIATE CHECK
             intermediates_met = True
             for req in pathway["Intermediate Courses"]:
                 if not any(c in self.courses for c in req):
                     intermediates_met = False
                     break
+            pathway_intermed_logic = []
+            if not intermediates_met:
+                # 2. DYNAMIC INTERMEDIATE CHECK - allow unknown intermediates
+                for idx, req_group in enumerate(pathway["Intermediate Courses"]):
+
+                    # we can statically fulfill this requirement, so skip it
+                    if any(c in self.courses for c in req_group):
+                        # TODO: how does this affect printing?
+                        continue
+
+                    group_conditions = []
+                    # check if there is an unknown that can fulfill this requirement
+                    for course in [c for c in self.courses if c.startswith("Unknown")]:
+                        var_intermed = Bool(f"use_{course}_for_pathway_{p_name}_intermed_{idx}")
+                        
+                        # Does this Unknown's identity match the pathway's requirement?
+                        is_in_group = Or([
+                            self.unknown_identities[course][c] 
+                            for c in req_group if c in all_intermediates
+                        ])
+                        
+                        group_conditions.append(If(var_intermed, 1, 0))
+                        
+                        # It can ONLY be assigned to this pathway intermed if its identity matches!
+                        self.s.add(Implies(var_intermed, is_in_group))
+                        
+                        # all pathway intermediates are also intermediates in the course plan
+                        intermediate_version = self.assignment_vars[course]["intermediate"]
+                        self.s.add(Implies(var_intermed, intermediate_version))
+                            
+                    # We need EXACTLY 1 course to satisfy this prerequisite group
+                    group_sum = Sum(*([0] + group_conditions))
+                    
+                    # Tie it to the pathway's activity so Z3 doesn't assign Unknowns to dead pathways
+                    self.s.add(Implies(p_active, group_sum == 1))
+                    self.s.add(Implies(Not(p_active), group_sum == 0))
+                    
+                    pathway_intermed_logic.append(group_sum == 1)
 
             # 3. PATHWAY COMPLETION LOGIC
+            # To activate, we need >= 1 core, EXACTLY 2 total classes, AND all intermediates
             if intermediates_met:
-                # To activate, we need >= 1 core, and EXACTLY 2 total classes 
-                # (1 core + 1 additional) so we don't waste courses.
                 pathway_valid_logic = And(
                     Sum(*([0] + core_conditions)) >= 1,
                     Sum(*([0] + total_conditions)) == 2
                 )
-                
-                # Link the active boolean to the completion of the logic
-                self.s.add(p_active == pathway_valid_logic)
-
-                # CRITICAL: If the pathway is NOT active, force the assigned courses to 0.
-                # This stops Z3 from assigning 1 course to a dead pathway and wasting it.
-                self.s.add(Implies(Not(p_active), Sum(*([0] + total_conditions)) == 0))
-                
             else:
-                # If they didn't take the intermediates, this pathway is impossible
-                self.s.add(Not(p_active))
-                for course in self.courses:
-                    self.s.add(Not(course_pathway_vars[course][p_name]))
+                pathway_valid_logic = And(
+                    Sum(*([0] + core_conditions)) >= 1,
+                    Sum(*([0] + total_conditions)) == 2,
+                    *pathway_intermed_logic  # Unpack the intermediate Z3 conditions here!
+                )
+            
+            # Link the active boolean to the completion of the logic
+            self.s.add(p_active == pathway_valid_logic)
+
+            # CRITICAL: If the pathway is NOT active, force the assigned courses to 0.
+            # This stops Z3 from assigning 1 course to a dead pathway and wasting it.
+            self.s.add(Implies(Not(p_active), Sum(*([0] + total_conditions)) == 0))
 
         # 4. LINK SUB-MATRIX TO GLOBAL MATRIX
         for course in self.courses:
@@ -513,14 +669,9 @@ class OldCS():
 
     def __oldAdditionalCoursesConstraint(self, degree_type: str) -> BoolRef:
             non_cs_courses: list[str] = self.reader.get_non_cs_courses()
-            intermediate_data = self.reader.get_intermediate()
-
-            # 1. Flatten the intermediate JSON into a single easily searchable set
-            all_intermediates = set()
-            for category in intermediate_data:
-                for group in category["Courses"]:
-                    for course in group:
-                        all_intermediates.add(course)
+            
+            # 1. Get all intermediate courses
+            all_intermediates = self.reader.get_flat_intermediates()
 
             total_assigned_conditions = []
             upper_level_conditions = []
@@ -540,7 +691,7 @@ class OldCS():
                     course.startswith("MATH") or 
                     (course in non_cs_courses)
                 )
-                is_intermediate = course in all_intermediates
+                is_intermediate = course in all_intermediates # TODO: technically we should handle unknowns here
                 is_upper_level = course_num >= 1000
 
                 # 4. Categorize valid courses
@@ -694,9 +845,5 @@ class OldCS():
             
             # count how many restricted buckets this course is placed into
             restricted_count = Sum(*[If(b, 1, 0) for b in restricted_bools])
-            
-            # pathways can share intermediates with other parts of the requirements
-            # but this is not actually relevant with how we've built the model
-            # since we aren't using Z3 variables for those, so we can ignore that here
             
             self.s.add(restricted_count <= 1)

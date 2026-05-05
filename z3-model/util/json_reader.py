@@ -121,6 +121,16 @@ class JSONReader:
     def get_intermediate(self) -> List[Dict]:
         """Get intermediate course requirements (by category)."""
         return self.get("intermediate") or []
+
+    def get_flat_intermediates(self) -> set[str]:
+        """Get all intermediate courses"""
+        all_intermediates = set()
+        for category in self.get_intermediate():
+            for group in category["Courses"]:
+                for course in group:
+                    all_intermediates.add(course)
+
+        return all_intermediates
     
     def get_new_foundations(self) -> List[Dict]:
         """Get new foundations course requirements."""
