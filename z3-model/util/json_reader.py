@@ -140,6 +140,15 @@ class JSONReader:
         """Get new foundations course requirements."""
         return self.get("new_foundations") or []
     
+    def get_flat_foundations(self) -> set[str]:
+        """Get all new foundations courses."""
+        all_foundations = set()
+        for category in self.get_new_foundations():
+            for group in category["Courses"]:
+                for course in group:
+                    all_foundations.add(course)
+        return all_foundations
+    
     def get_new_apma_cs_foundations(self) -> List[Dict]:
         """Get new apma-cs foundations course requirements."""
         return self.get("new_apma_cs_foundations") or []

@@ -54,20 +54,29 @@ class ScheduleFetcher():
             )
         
     def __fix_1970_courses(self, courses: list[str]) -> list[str]:
-        # change the first instance of CSCI 1970 into 1970(1), the second instance in 1970(2)
-        # further instances should be changed to "UNUSABLE" so that they cannot be used
-
-        count_1970 = 0
+        # A dictionary to track the counts of 1970 courses per department prefix
+        prefix_counts = {}
 
         for i, course in enumerate(courses):
-            if course == "CSCI 1970":
-                count_1970 += 1
-                if count_1970 == 1:
-                    courses[i] = "CSCI 1970(1)"
-                elif count_1970 == 2:
-                    courses[i] = "CSCI 1970(2)"
-                else:
-                    courses[i] = "UNUSABLE"
+            # Check if the course ends with " 1970"
+            if course.endswith(" 1970"):
+                # Extract the potential prefix by slicing off the last 5 characters (" 1970")
+                prefix = course[:-5]
+                
+                # Verify the prefix is either 3 or 4 characters long
+                # This is just a check to make sure nothing weird happens
+                # the prefixes are department codes, which are all 3-4 characters
+                if len(prefix) in (3, 4):
+                    # Increment the count for this specific prefix
+                    prefix_counts[prefix] = prefix_counts.get(prefix, 0) + 1
+                    count = prefix_counts[prefix]
+                    
+                    if count == 1:
+                        courses[i] = f"{prefix} 1970(1)"
+                    elif count == 2:
+                        courses[i] = f"{prefix} 1970(2)"
+                    else:
+                        courses[i] = "UNUSABLE"
         
         return courses
                 
