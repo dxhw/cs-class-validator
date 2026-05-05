@@ -118,6 +118,10 @@ class JSONReader:
         """Get list of capstone courses."""
         return self.get("capstone") or []
     
+    def get_econ_capstone_courses(self) -> List[str]:
+        """Get list of capstone courses."""
+        return self.get("econ_capstone") or []
+    
     def get_intermediate(self) -> List[Dict]:
         """Get intermediate course requirements (by category)."""
         return self.get("intermediate") or []
@@ -136,6 +140,10 @@ class JSONReader:
         """Get new foundations course requirements."""
         return self.get("new_foundations") or []
     
+    def get_new_apma_cs_foundations(self) -> List[Dict]:
+        """Get new apma-cs foundations course requirements."""
+        return self.get("new_apma_cs_foundations") or []
+    
     def get_humanities_courses(self) -> List[str]:
         """Get list of humanities courses."""
         return self.get("humanities") or []
@@ -143,6 +151,10 @@ class JSONReader:
     def get_non_cs_courses(self) -> List[str]:
         """Get list of non-CS courses."""
         return self.get("non_cs_courses") or []
+    
+    def get_new_math_econ(self) -> List[str]:
+        """Get list of Mathematical Economics courses."""
+        return self.get("math_econ") or []
     
     def clear_cache(self) -> None:
         """Clear the instance's internal data cache."""
