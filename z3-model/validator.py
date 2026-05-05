@@ -27,6 +27,7 @@ from cs_econ_new_validator import NewCSEcon
 from apma_cs_new_validator import NewAPMACS
 from math_cs_new_validator import NewMATHCS
 
+from argparse import ArgumentParser
 
 
 DEFAULT_OLD_CONSTRAINTS_DICT = {
@@ -106,42 +107,75 @@ DEFAULT_NEW_MATH_CS_CONSTRAINTS_DICT = {
             # case "capstone":
             #     return self.__newCapstoneConstraint
 
-reader = JSONReader()
-schedules = ScheduleFetcher()
-d_courses = schedules.get_json("doren_schedule")
-t3_courses = schedules.get_json("test_schedule3")
-# old_validator = OldCS(2026, d_courses, reader, DEFAULT_OLD_CONSTRAINTS_DICT)
-# old_validator.validate("SCB")
-# print("\n+=============================+\n")
-
-# old_validator = OldCS(2026, t3_courses, reader, DEFAULT_OLD_CONSTRAINTS_DICT)
-# old_validator.validate("SCB")
-# print("\n+=============================+\n")
-
+# reader = JSONReader()
+# schedules = ScheduleFetcher()
+# d_courses = schedules.get_json("doren_schedule")
+# d2_courses = schedules.get_json("dior_schedule")
 # t3_courses = schedules.get_json("test_schedule3")
-
-# new_validator = NewCS(2028, t3_courses, reader, DEFAULT_NEW_CONSTRAINTS_DICT)
-# new_validator.validate("SCB")
+# l_courses = schedules.get_json("last_minute_ai")
+# comp_bio_courses = schedules.get_json("comp_bio1")
+# old_validator = OldCS(2026, l_courses, reader, DEFAULT_OLD_CONSTRAINTS_DICT)
+# old_validator.validate("AB")
 # print("\n+=============================+\n")
 
-# econ_courses = schedules.get_json("working_cs_econ_scb")
-
-# new_cs_econ_validator = NewCSEcon(2028, econ_courses, reader, DEFAULT_NEW_CS_ECON_CONSTRAINTS_DICT)
-# new_cs_econ_validator.validate("SCB")
+# new_validator = NewCS(2026, d2_courses, reader, DEFAULT_NEW_CONSTRAINTS_DICT)
+# new_validator.validate("AB")
 # print("\n+=============================+\n")
-
-# apma_courses = schedules.get_json("working_apma_cs_scb")
-
-# new_apma_cs_validator = NewAPMACS(2028, apma_courses, reader, DEFAULT_NEW_APMA_CS_CONSTRAINTS_DICT)
-# new_apma_cs_validator.validate("SCB")
-# print("\n+=============================+\n")
-
-math_courses = schedules.get_json("working_math_cs_scb")
-
-new_math_cs_validator = NewMATHCS(2028, math_courses, reader, DEFAULT_NEW_MATH_CS_CONSTRAINTS_DICT)
-new_math_cs_validator.validate("SCB")
-print("\n+=============================+\n")
 
 # some_courses = schedules.get_json("working_new_scb")
 # newer_validator = NewCS(2026, some_courses, reader, DEFAULT_NEW_CONSTRAINTS_DICT)
 # newer_validator.validate("SCB")
+
+def parse_args():
+    parser = ArgumentParser(description="This program helps you validate a CS degree! Please put in additional parameters to customize your validation")
+    parser.add_argument('--year', dest='year', help="your graduation year", default=2026, type=int)
+    parser.add_argument('--degree_type', dest='degree_type', help="your degree type (AB/SCB), default is SCB", choices=["SCB", "AB"], default="SCB", type=str)
+    parser.add_argument("--degree", dest="degree", help="the degree you're getting", choices=["CS", "CompBio", "CS+Econ", "MATH+CS", "APMA+CS"], default="CS")
+    parser.add_argument('--requirement_version', dest="requirement_version", help="The version of requirements that you are using (Old/New)", choices=["Old", "New", "Either"], default="Old")
+    parser.add_argument('--courses', dest="course_json_file", help="the JSON file with the courses you'd like to evaluate", default='dhw_old_scb', type=str)
+
+    return parser.parse_args()
+
+def main():
+    """
+    Main function to initialize and run the course plan validator.
+    """
+    reader = JSONReader()
+    schedules = ScheduleFetcher()
+
+    args = parse_args()
+    print(args)
+    
+    courses = schedules.get_json(args.course_json_file)
+    
+    old_solver = None
+    new_solver = None
+    match args.degree:
+        case "CS":
+            if args.requirement_version == "Old" or args.requirement_version == "Either":
+                old_solver = OldCS(args.year, courses, reader, DEFAULT_OLD_CONSTRAINTS_DICT)
+            if args.requirement_version == "New" or args.requirement_version == "Either":
+                new_solver = NewCS(args.year, courses, reader, DEFAULT_NEW_CONSTRAINTS_DICT)
+        case "CompBio":
+            NotImplementedError("CompBio requiremnts not implemented yet")
+        case "CS+Econ":
+            NotImplementedError("CS+Econ requiremnts not implemented yet")
+        case "Math+CS":
+            NotImplementedError("MATH+CS requiremnts not implemented yet")
+        case "APMA+CS":
+            NotImplementedError("APMA+CS requiremnts not implemented yet")
+        case _:
+            ValueError("Invalid Degree Requested")
+    
+    if old_solver != None:
+        old_solver.validate(args.degree_type)
+
+    if old_solver != None and new_solver != None:
+        print("\n+=============================+\n")
+
+    if new_solver != None:
+        new_solver.validate(args.degree_type)
+
+
+if __name__ == "__main__":
+    main()
