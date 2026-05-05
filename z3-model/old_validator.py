@@ -7,6 +7,8 @@ class OldCS():
     def  __init__(self, year: int, courses: list[str], reader: JSONReader, constraint_dict: dict[str, bool]):
         # pull in the degree JSONS
 
+        # We are using an optimizer rather than a solver here so that we can get unknowns to prefer
+        # elective positions instead of pathways, which makes for more flexible degree suggestions
         self.s = Optimize()
         self.constraint_dict = constraint_dict
         self.year = year # if you are above class of 2027, these requirements are not available

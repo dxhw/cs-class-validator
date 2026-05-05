@@ -1,24 +1,3 @@
-# things we need to consider outside of JSONS:
-# intro
-# math 1000s
-# 1970
-# 1000+s 
-
-# New:
-#     SCB:
-#         intro sequence (2 courses): intro
-#         math foundations (22): math
-#         3 foundations (AI, systems, theory): foundations
-#         5 1000+ levels - not artsy, not 1970: upperDiv
-#         4 electives - basically anything (2 1970, linear, swe, 3 non-department): electives
-#         capstone: capstone
-    # AB: 
-#         intro sequence (2 courses)
-#         math foundations (22)
-#         3 foundations (AI, systems, theory)
-#         2 1000+ levels - not artsy, not 1970
-#         2 electives - basically anything (2 1970, linear, swe, 3 non-department)
-#         capstone
 from typing import Callable
 from util.json_reader import JSONReader
 
@@ -33,7 +12,7 @@ class NewCS():
         self.courses = courses
         self.reader = reader
 
-    def validate(self, degree_type: str):
+    def validate(self, degree_type: str, unknowns: int=0):
         #Only degree types are AB/SCB
         assert degree_type == "SCB" or degree_type == "AB"
         print("new " + degree_type)
@@ -58,21 +37,32 @@ class NewCS():
             constraint_func = self.__constraint_func_mapper(req)
             self.s.add(constraint_func(degree_type))
 
-        # no double dipping (except intermediates and capstone)
+        # no double dipping (except capstone)
         self.__doubleDippingConstraint()
 
         is_sat = self.s.check() == sat
         
         # Print the actual course assignments if satisfied
         if is_sat:
-            self.__print_results()
+            if unknowns == 0:
+                self.__print_results()
+            #are there unknowns involved? also print alternatives. 
+            else:
+                print(f"Found a valid course plan with {unknowns} unknown courses")
+                self.__generate_unknown_alternatives()
+
+            self.s.pop()
         else:
             print(f"cannot form a valid {degree_type} degree")
+            print(f"trying with {unknowns + 1} inserted unknown class(es)")
+            self.s.pop()
+            self.__try_with_unknowns(degree_type, unknowns)
 
-        self.s.pop()
+
+
         return is_sat
     
-    # this function assumes the constraints are SAT!
+        # this function assumes the constraints are SAT!
     def __print_results(self):
         active_reqs = [req for req, is_active in self.constraint_dict.items() if is_active]
         m = self.s.model()
@@ -87,9 +77,20 @@ class NewCS():
             used_courses = [c for c in self.courses if is_true(m.evaluate(self.assignment_vars[c][req]))]
             all_used_courses.extend(used_courses)
             
-            # Print everything EXCEPT pathways as a standard list
-            if req != "pathways":
+            # Print everything EXCEPT foundations as a standard list
+            if req != "foundations":
                 print(f"{req}: {used_courses}")
+            elif req == "foundations":
+                print("foundations:")
+                foundations_requirements = self.reader.get_new_foundations()
+                unknowns_used_for_foundations = [c for c in used_courses if c.startswith("Unknown")]
+                for foundations_category in foundations_requirements:
+                    # the 0 index is kind of gross, but is because we have used standard formatting for our JSONs
+                    course_used_for_category = [c for c in used_courses if c in foundations_category["Courses"][0]]
+                    if not course_used_for_category: # need to use an unknown
+                        course_used_for_category = [unknowns_used_for_foundations.pop()]
+                        
+                    print(f"     {foundations_category['Category']}: {course_used_for_category[0]}")
 
         # --- Humanities Printing ---
         humanities_list = self.reader.get_humanities_courses()
@@ -98,6 +99,83 @@ class NewCS():
         # Use a set to remove duplicates (in case a humanity was used in multiple buckets)
         unique_humanities = list(set(humanities_included_in_degree))
         print(f"humanities courses used in degree: {unique_humanities}")
+    
+    ################################### UNKNOWN HANDLING #######################################
+    
+    def __try_with_unknowns(self, degree_type: str, num_unknowns: int, limit_of_unknown: int = 5):
+        if num_unknowns > limit_of_unknown:
+            print("Too many unknowns to build a degree!")
+            return False
+        
+        count = num_unknowns + 1
+        self.courses.append(f"Unknown {count}")
+        is_sat = self.validate(degree_type, num_unknowns + 1)
+
+        return is_sat
+        
+
+    def __generate_unknown_alternatives(self, limit: int = 5):
+        print("\nSearching for Unknown course placements...")
+        
+        # Get active requirements
+        active_reqs = [req for req, is_active in self.constraint_dict.items() if is_active]
+        pathway_requirements = self.reader.get_pathways() if "pathways" in active_reqs else []
+
+        # Get a static list of the unknown courses
+        unknown_courses = [c for c in self.courses if c.startswith("Unknown")]
+
+        count = 0
+        while self.s.check() == sat and count < limit:
+            m = self.s.model()
+            count += 1
+            print(f"\n--- Alternative {count} ---")
+            
+            unknowns_used = False
+            
+            # This list will hold equations defining the CURRENT distribution of Unknowns.
+            # e.g., [Sum(Unknowns in intro) == 1, Sum(Unknowns in pathways) == 1, ...]
+            current_distribution_equations = []
+
+            # 1. Check the main requirement buckets
+            for req in active_reqs:
+                if req == "humanities-limit":
+                    continue
+                
+                # Gather the booleans for ALL unknowns in THIS specific requirement
+                unknowns_in_this_req = [If(self.assignment_vars[c][req], 1, 0) for c in unknown_courses]
+                
+                # Create a Z3 expression for the sum
+                sum_expr = Sum(*([0] + unknowns_in_this_req))
+                
+                # Evaluate the actual integer sum in the current model
+                actual_count = m.evaluate(sum_expr)
+                
+                # We enforce the exact count for THIS bucket to our signature
+                current_distribution_equations.append(sum_expr == actual_count)
+
+                # For printing purposes, we only care if the count is > 0
+                if actual_count.as_long() > 0:
+                    unknowns_used = True
+                    print(f"- {actual_count} Unknown(s) filling requirement: {req}")
+
+            self.__print_results()
+
+            # 2. Block this specific numerical distribution and loop again
+            if unknowns_used:
+                # Tell Z3: "You cannot use this EXACT distribution of Unknowns again."
+                self.s.add(Not(And(*current_distribution_equations)))
+            else:
+                print("- No Unknowns were needed to graduate! The real transcript is sufficient.")
+                break # Stop searching if they can graduate without help
+                
+        if self.s.check() != sat:
+            print("out of possible placements")
+        else:
+            print(f"hit unknown placement limit")
+        print(f"{count} alternative placements found")
+        print("done!")
+    
+    ############################# CONSTRAINTS ########################################
     
     def __constraint_func_mapper(self, constraint: str) -> Callable[[str], BoolRef]:
         match (constraint):
@@ -153,13 +231,21 @@ class NewCS():
             # --- Build Path 2 variables: accel ---
             if course == intro_1_accel:
                 taken_0190 = intro_var
-            if course_num >= 200 and is_cs_course:
+            if (course_num >= 200 and is_cs_course) or course.startswith("Unknown"):
                 path2_intro2_pool.append(If(intro_var, 1, 0))
 
         # Safely handle if the student didn't take 0190 or 0200 at all
         # If they didn't take it, we pass Z3 a hardcoded False
         var_0200 = taken_0200 if taken_0200 is not False else BoolVal(False)
         var_0190 = taken_0190 if taken_0190 is not False else BoolVal(False)
+
+
+        # If took both 19 and 200, use those as the intro courses no matter what
+        took_both = taken_0200 is not False and taken_0190 is not False
+        
+        # If they took both, we require both of their intro variables to be True. 
+        # Otherwise, we just pass True (which has no effect in an And statement).
+        override_rule = And(var_0190, var_0200) if took_both else BoolVal(True)
 
         # Rule 1: We must select EXACTLY 2 courses for the intro requirement globally.
         # (Adding a literal 0 to the lists prevents Z3 from crashing if the student 
@@ -177,7 +263,7 @@ class NewCS():
         # The overall requirement is satisfied if we have exactly 2 courses 
         # AND one of the paths is valid.
         
-        return And(rule_exactly_two, Or(path1_valid, path2_valid)) # type: ignore
+        return And(rule_exactly_two, Or(path1_valid, path2_valid), override_rule) # type: ignore
     
 
     def __newMathConstraint(self, degree_type: str) -> BoolRef:
@@ -191,7 +277,7 @@ class NewCS():
             math_var = self.assignment_vars[course]["math"]
 
             #add a condition to count the requirement if allowed
-            if course in math_allowed:
+            if (course in math_allowed) or course.startswith("Unknown"):
                 total_math_conditions.append(If(math_var, 1, 0))
             else:
                 #and disallow the assignment for this requirement if not.
@@ -199,7 +285,7 @@ class NewCS():
 
         #We only need one math foundations course in the degree
         final_math_constraint = Sum(*([0] + total_math_conditions)) == 1
-        return final_math_constraint
+        return final_math_constraint # type: ignore
     
 
     def __newFoundationsConstraint(self, degree_type: str) -> BoolRef:
@@ -210,8 +296,12 @@ class NewCS():
         all_slot_sums = []
         category_active_vars = []
 
-        # 1. Parse JSON and build logical slots
-        for category_data in foundations_requirements:
+        unknown_courses = [c for c in self.courses if c.startswith("Unknown")]
+        # Maps an unknown course to a list of Z3 Bools representing its placement in each slot
+        unknown_slot_vars = {u: [] for u in unknown_courses}
+
+        # 1. Parse JSON and build logical slots    
+        for idx, category_data in enumerate(foundations_requirements):
             course_groups = category_data["Courses"]
             cat_slot_sums = []
 
@@ -229,6 +319,12 @@ class NewCS():
                         var = self.assignment_vars[course]["foundations"]
                         slot_vars.append(If(var, 1, 0))
 
+                for u in unknown_courses:
+                    # Create a specific Z3 boolean for this unknown course in this slot
+                    u_slot_var = Bool(f"{u}_foundations_slot_{idx}")
+                    unknown_slot_vars[u].append(u_slot_var)
+                    slot_vars.append(If(u_slot_var, 1, 0))
+
                 if slot_vars:
                     # Enforce that a student gets AT MOST 1 credit per sub-list
                     slot_sum = Sum(*slot_vars)
@@ -245,11 +341,22 @@ class NewCS():
 
         # 3. Exclude invalid courses
         for course in self.courses:
-            if course not in valid_foundations_courses:
+            if course not in valid_foundations_courses and not course.startswith("Unknown"):
                 var = self.assignment_vars[course]["foundations"]
                 self.s.add(Not(var))
 
-        # 4. Calculate global totals
+        # 4. Calculate global totals + enforce unknowns
+        for u in unknown_courses:
+            u_global_var = self.assignment_vars[u]["foundations"]
+            u_slot_sum = Sum(*[If(v, 1, 0) for v in unknown_slot_vars[u]])
+            
+            # An unknown course cannot fulfill more than 1 foundations bucket
+            self.s.add(u_slot_sum <= 1)
+            
+            # The global foundations variable for this unknown course is True 
+            # if and only if it is assigned to exactly one slot inside the buckets
+            self.s.add(u_global_var == (u_slot_sum == 1))
+        
         # Adding [0] ensures we don't crash if the lists are completely empty
         total_foundations = Sum(*([0] + all_slot_sums))
         total_branches = Sum(*([0] + category_active_vars))
@@ -278,10 +385,11 @@ class NewCS():
                 course_num = 0
                 
             # 2. Basic Check: Must be a CSCI course >= 1000 and not CSCI 1970 and not humanities
-            if (course.startswith("CSCI") and 
+            if ((course.startswith("CSCI") and 
                 course_num >= 1000 and 
                 not course.startswith("CSCI 1970") and
-                course not in humanities_courses):
+                course not in humanities_courses) or 
+                course.startswith("Unknown")):
                 valid_conditions.append(If(technical_var, 1, 0))
             else:
                 # Force invalid courses (e.g., ENGN courses or < 1000 or IDP or humanities) to False
@@ -299,7 +407,7 @@ class NewCS():
         valid_electives = []
         non_cs_courses: list[str] = self.reader.get_non_cs_courses()
         linear_alg_courses = ["MATH 0520", "MATH 0540", "APMA 0260"]
-        idp_study_courses = ["CSCI 1970(1)", "CSCI 1970(2)"]
+        idp_study_courses = ["CSCI 1970(1)", "CSCI 1970(2)"] # this is picked up by the general requirement, but it's nice to spell out
         additional_systems_courses = ["CSCI 0320"]
         if degree_type == "AB":
             additional_systems_courses.extend(["CSCI 0300", "CSCI 0330"]) #AB allows any systems course
@@ -327,7 +435,8 @@ class NewCS():
             #check if the course is a valid elective
             is_valid_course = (
                 course in valid_electives or # course is approved
-                ((course.startswith("CSCI") or course.startswith("MATH")) and 1000 <= course_num < 3000) #course is CSCI/MATH 1000+
+                ((course.startswith("CSCI") or course.startswith("MATH")) and course_num >= 1000) or #course is CSCI/MATH 1000+
+                course.startswith("Unknown")
             )
 
             if is_valid_course:
@@ -360,7 +469,7 @@ class NewCS():
             # 2 total courses, and no more than 1 non-cs, no more than 1 systems
             final_constraint = And(total_assigned == 2, total_non_cs <= 1, total_systems <= 1)
 
-        return final_constraint
+        return final_constraint # type: ignore
     
     def __newCapstoneConstraint(self, degree_type: str) -> BoolRef:
         #get the list of capstones
@@ -373,16 +482,11 @@ class NewCS():
             #get the capstone z3 variable for the course
             var = self.assignment_vars[course]["capstone"]
 
-            # 1. Add universally valid capstones (1970(1) and 1970(2))
-            if course in ["CSCI 1970(1)", "CSCI 1970(2)"]:
-                valid_capstones.append(If(var, 1, 0))
-                continue
-
-            # 2. Add if course is in the list of capstone-able courses
-            if course in capstone_courses:
+            # 1. Add if course is in the list of capstone-able courses
+            if course in capstone_courses or course.startswith("Unknown"):
                 valid_capstones.append(If(var, 1, 0))
 
-            # 3. Not 1970, and not in the capstone list. Cannot be used for capstone!
+            # 2. Not in the capstone list (including 1970). Cannot be used for capstone!
             else:
                 self.s.add(Not(var))
 
