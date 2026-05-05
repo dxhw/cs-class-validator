@@ -26,7 +26,7 @@ class NewMATHCS():
     def validate(self, degree_type: str, unknowns: int=0):
         #Only degree types are SCB
         assert degree_type == "SCB"
-        print("new " + degree_type)
+        print("new MATH+CS " + degree_type)
 
         self.s.push()
 
@@ -268,7 +268,8 @@ class NewMATHCS():
     
 
     def __newMultiConstraint(self, degree_type: str) -> BoolRef:
-        multi_allowed = {"MATH 0090", "MATH 0100", "MATH 0180", "MATH 0200", "MATH 0350"}
+        calc_prereqs = {"MATH 0090", "MATH 0100"}
+        multi_allowed = {"MATH 0180", "MATH 0200", "MATH 0350"}
 
         total_multi_conditions = []
 
@@ -277,6 +278,13 @@ class NewMATHCS():
             #get the z3 variable for that course
             multi_var = self.assignment_vars[course]["multi"]
 
+            # we don't count this course since we only care about the multi course
+            # but we will still turn on the variable so that it can't be used for other
+            # requirements
+            if course in calc_prereqs:
+                self.s.add(multi_var)
+                continue
+            
             #add a condition to count the requirement if allowed
             if (course in multi_allowed) or course.startswith("Unknown"):
                 total_multi_conditions.append(If(multi_var, 1, 0))
@@ -284,8 +292,8 @@ class NewMATHCS():
                 #and disallow the assignment for this requirement if not.
                 self.s.add(Not(multi_var))
 
-        #We need 3 calc... but we can stop at 180 if we start at 90, but we go to 350 if we start at 180
-        final_multi_constraint = Sum(*([0] + total_multi_conditions)) == 3
+        #We need 1 multi course. These are mutually exclusive, so we want exactly one
+        final_multi_constraint = Sum(*([0] + total_multi_conditions)) == 1
         return final_multi_constraint # type: ignore
     
 
@@ -366,7 +374,8 @@ class NewMATHCS():
         return final_constraint # type: ignore
     
     def __newLinearConstraint(self, degree_type: str) -> BoolRef:
-        linear_allowed = {"MATH 0520", "MATH 0540", "CSCI 0530"}
+        # The APMA course is permitted by the CS Handbook, though is not on Bulletin
+        linear_allowed = {"MATH 0520", "MATH 0540", "CSCI 0530", "APMA 1170"}
 
         total_linear_conditions = []
 
@@ -406,7 +415,6 @@ class NewMATHCS():
         #We only need 1 abstract in degree
         final_abstract_constraint = Sum(*([0] + total_abstract_conditions)) == 1
         return final_abstract_constraint # type: ignore
-    
 
     def __newUpperMathConstraint(self, degree_type: str) -> BoolRef:
         total_upper_math_conditions = []
@@ -436,11 +444,13 @@ class NewMATHCS():
     def __newTechnicalConstraint(self, degree_type: str) -> BoolRef:
         #get the list of humanities courses to check against
         humanities_courses: list[str] = self.reader.get_humanities_courses()
-        foundations_requirements: list[str] = self.reader.get_new_foundations()
+        # not all CS foundations are valid here, so we need to enumerate (CS500 does not work)
+        foundations_requirements: set[str] = {"CSCI 0410", "CSCI 1410", "CSCI 1411", "CSCI 0300", "CSCI 0330"}
 
         valid_conditions = []
         idp_conditions = []
         foundations_conditions = []
+        humanities_conditions = []
         
         for course in self.courses:
             #get the corresponding z3 variable for each course
@@ -453,10 +463,9 @@ class NewMATHCS():
             except ValueError:
                 course_num = 0
                 
-            # 2. Basic Check: Must be a CSCI course >= 1000 and not humanities
+            # 2. Basic Check: Must be a CSCI course >= 1000 or a foundations course
             if ((course.startswith("CSCI") and 
-                course_num >= 1000 and
-                course not in humanities_courses) or 
+                course_num >= 1000) or 
                 (course in foundations_requirements) or
                 course.startswith("Unknown")):
 
@@ -470,15 +479,30 @@ class NewMATHCS():
                 if course in foundations_requirements:
                     foundations_conditions.append(If(technical_var, 1, 0))
 
-            else:
-                # Force invalid courses (e.g., ENGN courses or < 1000 or IDP or humanities) to False
-                self.s.add(Not(technical_var))
+                #if the course is a humanities course, track this
+                if course in humanities_courses:
+                    humanities_conditions.append(If(technical_var, 1, 0))
 
-        return And(Sum(*([0] + valid_conditions)) == 3, Sum(*([0] + idp_conditions)) <= 1, Sum(*([0] + foundations_conditions)) <= 1)
+            else:
+                # Force invalid courses (e.g., ENGN courses or < 1000) to False
+                self.s.add(Not(technical_var))
+        
+        # can have 1 course be an independent study
+        # can have 1 course that is either a foundations course or humanities course
+        # 3 courses total
+        indep_condition = Sum(*([0] + idp_conditions)) <= 1
+        foundation_or_humanities_condition = Sum(*([0] + foundations_conditions + humanities_conditions)) <= 1
+        total_number_condition = Sum(*([0] + valid_conditions)) == 3
+        final_condition = And(total_number_condition, indep_condition, foundation_or_humanities_condition)
+
+        return final_condition # type: ignore
 
 
     def __newElectiveConstraint(self, degree_type: str) -> BoolRef:
         total_elective_conditions = []
+        # we can only have one of the courses in the restricted group
+        restricted_group = {"APMA 1650", "APMA 1655", "CSCI 1450"}
+        restricted_group_conditions = []
 
         #for each course...
         for course in self.courses:
@@ -488,12 +512,17 @@ class NewMATHCS():
             #add a condition to count the requirement if allowed
             if (course.startswith("MATH") or course.startswith("APMA") or course.startswith("CSCI")) or course.startswith("Unknown"):
                 total_elective_conditions.append(If(elective_var, 1, 0))
+                if course in restricted_group:
+                    restricted_group_conditions.append(If(elective_var, 1, 0))
             else:
                 #and disallow the assignment for this requirement if not.
                 self.s.add(Not(elective_var))
 
+        #At most one of APMA 1650, APMA 1655, and CSCI 1450 can be used for concentration credit
+        restricted_group_constraint = Sum(*([0] + restricted_group_conditions)) <= 1
         #We only need 3 elective in degree
-        final_elective_constraint = Sum(*([0] + total_elective_conditions)) == 3
+        elective_number_constraint = Sum(*([0] + total_elective_conditions)) == 3
+        final_elective_constraint = And(restricted_group_constraint, elective_number_constraint)
         return final_elective_constraint # type: ignore
 
     
@@ -501,6 +530,7 @@ class NewMATHCS():
         #get the list of capstones
         cs_capstone_courses: list[str] = self.reader.get_capstone_courses()
         #there are only CS capstones...
+        # we will treat MATH 1970 as capstone-able work and assume it is a thesis
 
         valid_capstones = []
 
@@ -511,7 +541,8 @@ class NewMATHCS():
 
             # 1. Add if course is in the list of capstone-able courses
             if (course in cs_capstone_courses or 
-            course.startswith("Unknown")):
+                course.startswith("Unknown") or
+                course.startswith("MATH 1970")):
                 valid_capstones.append(If(var, 1, 0))
 
             # 2. Not in the capstone list (which includes 1970). Cannot be used for capstone!
@@ -530,7 +561,8 @@ class NewMATHCS():
         #for each course...
         for course in self.courses:
             #  humanities requirements can overlap with anything, so take them out of the restricted pool
-            restricted_reqs = [req for req in active_reqs if (req != "capstone" and req != "humanities-limit")]
+            # notably, the capstone is a separate course for mathCS and cannot overlap
+            restricted_reqs = [req for req in active_reqs if req != "humanities-limit"]
             
             # get the booleans for all remaining restricted requirements
             restricted_bools = [self.assignment_vars[course][req] for req in restricted_reqs]

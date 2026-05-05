@@ -109,8 +109,8 @@ def parse_args():
     parser = ArgumentParser(description="This program helps you validate a CS degree! Please put in additional parameters to customize your validation")
     parser.add_argument('--year', dest='year', help="your graduation year", default=2026, type=int)
     parser.add_argument('--degree_type', dest='degree_type', help="your degree type (AB/SCB), default is SCB", choices=["SCB", "AB"], default="SCB", type=str)
-    parser.add_argument("--degree", dest="degree", help="the degree you're getting", choices=["CS", "CompBio", "CS+Econ", "MATH+CS", "APMA+CS"], default="CS")
-    parser.add_argument('--requirement_version', dest="requirement_version", help="The version of requirements that you are using (Old/New)", choices=["Old", "New", "Either"], default="Old")
+    parser.add_argument("--degree", dest="degree", help="the degree you're getting", choices=["CS", "CompBio", "CS+ECON", "MATH+CS", "APMA+CS"], default="CS")
+    parser.add_argument('--requirement_version', dest="requirement_version", help="The version of requirements that you are using (Old/New), default is New", choices=["Old", "New", "Either"], default="New")
     parser.add_argument('--courses', dest="course_json_file", help="the JSON file with the courses you'd like to evaluate", default='dhw_old_scb', type=str)
 
     return parser.parse_args()
@@ -136,13 +136,22 @@ def main():
             if args.requirement_version == "New" or args.requirement_version == "Either":
                 new_solver = NewCS(args.year, courses, reader, DEFAULT_NEW_CONSTRAINTS_DICT)
         case "CompBio":
-            NotImplementedError("CompBio requiremnts not implemented yet")
-        case "CS+Econ":
-            NotImplementedError("CS+Econ requiremnts not implemented yet")
-        case "Math+CS":
-            NotImplementedError("MATH+CS requiremnts not implemented yet")
+                raise(NotImplementedError("CompBio requirements not implemented yet"))
+        case "CS+ECON":
+            if args.requirement_version == "New" or args.requirement_version == "Either":
+                new_solver = NewCSEcon(args.year, courses, reader, DEFAULT_NEW_CS_ECON_CONSTRAINTS_DICT)
+            if args.requirement_version == "Old" or args.requirement_version == "Either":
+                raise(NotImplementedError("CS+ECON old requirements not implemented yet"))
+        case "MATH+CS":
+            if args.requirement_version == "New" or args.requirement_version == "Either":
+                new_solver = NewMATHCS(args.year, courses, reader, DEFAULT_NEW_MATH_CS_CONSTRAINTS_DICT)
+            if args.requirement_version == "Old" or args.requirement_version == "Either":
+                raise(NotImplementedError("Math+CS old requirements not implemented yet"))
         case "APMA+CS":
-            NotImplementedError("APMA+CS requiremnts not implemented yet")
+            if args.requirement_version == "New" or args.requirement_version == "Either":
+                new_solver = NewAPMACS(args.year, courses, reader, DEFAULT_NEW_APMA_CS_CONSTRAINTS_DICT)
+            if args.requirement_version == "Old" or args.requirement_version == "Either":
+                raise(NotImplementedError("APMA+CS old requirements not implemented yet"))
         case _:
             ValueError("Invalid Degree Requested")
     
