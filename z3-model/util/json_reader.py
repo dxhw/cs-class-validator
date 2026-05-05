@@ -156,6 +156,14 @@ class JSONReader:
         """Get list of Mathematical Economics courses."""
         return self.get("math_econ") or []
     
+    def get_new_comp_bio_electives(self) -> List[str]:
+        """Get list of Comp Bio AB elective courses."""
+        return self.get("new_comp_bio_electives") or []
+    
+    def get_new_comp_bio_tracks(self) -> List[str]:
+        """Get list of Comp Bio SCB track courses."""
+        return self.get("new_comp_bio_tracks") or []
+    
     def clear_cache(self) -> None:
         """Clear the instance's internal data cache."""
         self._data.clear()

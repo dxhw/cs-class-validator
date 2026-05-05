@@ -268,7 +268,7 @@ class NewMATHCS():
     
 
     def __newMultiConstraint(self, degree_type: str) -> BoolRef:
-        multi_allowed = {"MATH 0090", "MATH 0100", "MATH 0180", "MATH 0200", "MATH 0350"}
+        multi_allowed = {"MATH 0180", "MATH 0200", "MATH 0350"}
 
         total_multi_conditions = []
 
@@ -284,8 +284,8 @@ class NewMATHCS():
                 #and disallow the assignment for this requirement if not.
                 self.s.add(Not(multi_var))
 
-        #We need 3 calc... but we can stop at 180 if we start at 90, but we go to 350 if we start at 180
-        final_multi_constraint = Sum(*([0] + total_multi_conditions)) == 3
+        #We need 3 calc... but it just needs to be up to multi, so really 1
+        final_multi_constraint = Sum(*([0] + total_multi_conditions)) == 1
         return final_multi_constraint # type: ignore
     
 

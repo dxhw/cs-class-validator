@@ -1,0 +1,82 @@
+[
+    {
+        "Track": "Computer Science",
+        "Courses": [
+            [
+                "CSCI 0410",
+                "CSCI 1411",
+                "CSCI 1230",
+                "CSCI 1270",
+                "CSCI 1420",
+                "CSCI 1430",
+                "CSCI 1460",
+                "CSCI 1470",
+                "CSCI 1550",
+                "CSCI 1730"
+            ],
+            [
+                "APMA 1070",
+                "APMA 1660",
+                "APMA 1690",
+                "BIOL 1430",
+                "BIOL 1435",
+                "BIOL 1525",
+                "BIOL 1555",
+                "CPSY 1291",
+                "CPSY 1492",
+                "CSCI 1820",
+                "STAT 1510",
+                "STAT 1560"
+            ]
+        ]
+    },
+    {
+        "Track": "Biology",
+        "Courses": [
+            [
+                "APMA 1070",
+                "APMA 1660",
+                "APMA 1690",
+                "BIOL 1222A",
+                "BIOL 1435",
+                "BIOL 1525",
+                "CPSY 1291",
+                "CPSY 1950",
+                "CSCI 1420",
+                "CSCI 1470",
+                "CSCI 1820",
+                "STAT 1510",
+                "STAT 1560"
+            ]
+        ]
+    },
+    {
+        "Track": "Applied Math",
+        "Courses": [
+            [
+                "APMA 0355",
+                "APMA 0365",
+                "APMA 1070",
+                "APMA 1170",
+                "APMA 1660",
+                "APMA 1690",
+                "APMA 1740",
+                "MATH 1220",
+                "STAT 1510",
+                "STAT 1511",
+                "STAT 1560"
+            ],
+            [
+                "BIOL 1222A",
+                "BIOL 1430",
+                "BIOL 1435",
+                "BIOL 1555",
+                "CSCI 0410",
+                "CSCI 1411",
+                "CSCI 1420",
+                "CSCI 1470",
+                "CSCI 1820"
+            ]
+        ]
+    }
+]

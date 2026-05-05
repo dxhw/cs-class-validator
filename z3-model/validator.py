@@ -26,6 +26,8 @@ from new_validator import NewCS
 from cs_econ_new_validator import NewCSEcon
 from apma_cs_new_validator import NewAPMACS
 from math_cs_new_validator import NewMATHCS
+from comp_bio_new_validator import NewCompBio
+
 
 from argparse import ArgumentParser
 
@@ -82,6 +84,18 @@ DEFAULT_NEW_MATH_CS_CONSTRAINTS_DICT = {
     "technical": True,
     "abstract": True,
     "upper-math": True,
+    "elective": True,
+    "capstone": True,
+}
+
+DEFAULT_NEW_COMP_BIO_CONSTRAINTS_DICT = {
+    "intro": True,
+    "prob-and-stats": True,
+    "discrete": True,
+    "bio-core": True,
+    "chem-core": True,
+    "comp-bio-core": True,
+    "track": True,
     "elective": True,
     "capstone": True,
 }
@@ -154,6 +168,11 @@ def main():
 
     if new_solver != None:
         new_solver.validate(args.degree_type)
+
+    print("\n+=============================+\n")
+    some_courses = schedules.get_json("cdf_old_comp_bio")
+    newer_validator = NewCompBio(2026, some_courses, reader, DEFAULT_NEW_COMP_BIO_CONSTRAINTS_DICT)
+    newer_validator.validate("AB")
 
 
 if __name__ == "__main__":
