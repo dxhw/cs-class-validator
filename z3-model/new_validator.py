@@ -1,5 +1,6 @@
 from typing import Callable
 from util.json_reader import JSONReader
+from util.util import get_course_number
 
 from z3 import *
 
@@ -266,10 +267,7 @@ class NewCS():
 
             # Extract the course number to check the ">= 0200" rule
             # (e.g., "CSCI 0320" -> 320)
-            try:
-                course_num = int(''.join(filter(str.isdigit, course)))
-            except ValueError:
-                course_num = 0
+            course_num = get_course_number(course)
 
             is_cs_course = course.startswith("CSCI")
 
@@ -429,11 +427,7 @@ class NewCS():
             technical_var = self.assignment_vars[course]["technical"]
             
             # 1. Parse the course code (e.g., "CSCI 1450" -> 1450)
-            try:
-                # Filter out the letters and grab the numbers
-                course_num = int(''.join(filter(str.isdigit, course)))
-            except ValueError:
-                course_num = 0
+            course_num = get_course_number(course)
                 
             # 2. Basic Check: Must be a CSCI course >= 1000 and not CSCI 1970 and not humanities
             if ((course.startswith("CSCI") and 
@@ -478,10 +472,7 @@ class NewCS():
             elective_var = self.assignment_vars[course]["elective"]
 
             # Extract course number to check the "1000 or 2000-level" rule
-            try:
-                course_num = int(''.join(filter(str.isdigit, course)))
-            except ValueError:
-                course_num = 0
+            course_num = get_course_number(course)
 
             #check if the course is a valid elective
             is_valid_course = (

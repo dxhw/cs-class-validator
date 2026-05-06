@@ -1,5 +1,6 @@
 from typing import Callable
 from util.json_reader import JSONReader
+from util.util import get_course_number
 
 from z3 import *
 
@@ -266,10 +267,7 @@ class NewMATHCS():
 
             # Extract the course number to check the ">= 0200" rule
             # (e.g., "CSCI 0320" -> 320)
-            try:
-                course_num = int(''.join(filter(str.isdigit, course)))
-            except ValueError:
-                course_num = 0
+            course_num = get_course_number(course)
 
             is_cs_course = course.startswith("CSCI")
 
@@ -473,11 +471,7 @@ class NewMATHCS():
             #get the z3 variable for that course
             upper_math_var = self.assignment_vars[course]["upper-math"]
 
-            try:
-                # Filter out the letters and grab the numbers
-                course_num = int(''.join(filter(str.isdigit, course)))
-            except ValueError:
-                course_num = 0
+            course_num = get_course_number(course)
 
             #add a condition to count the requirement if allowed
             if (course.startswith("MATH") and course_num >= 1000) or course.startswith("Unknown"):
@@ -506,11 +500,7 @@ class NewMATHCS():
             technical_var = self.assignment_vars[course]["technical"]
             
             # 1. Parse the course code (e.g., "CSCI 1450" -> 1450)
-            try:
-                # Filter out the letters and grab the numbers
-                course_num = int(''.join(filter(str.isdigit, course)))
-            except ValueError:
-                course_num = 0
+            course_num = get_course_number(course)
                 
             # 2. Basic Check: Must be a CSCI course >= 1000 or a foundations course
             if ((course.startswith("CSCI") and 

@@ -1,5 +1,6 @@
 from typing import Callable
 from util.json_reader import JSONReader
+from util.util import get_course_number
 
 from z3 import *
 
@@ -51,7 +52,7 @@ class NewCSEcon():
         #Only degree types are AB/SCB
         assert degree_type == "SCB" or degree_type == "AB"
 
-        print("Looking for old " + degree_type + " requirements")
+        print("Looking for old CS+Econ " + degree_type + " requirements")
 
         # Old requirements are only allowed for c/o 2027 and earlier
         if self.year > 2027:
@@ -282,10 +283,7 @@ class NewCSEcon():
 
             # Extract the course number to check the ">= 0200" rule
             # (e.g., "CSCI 0320" -> 320)
-            try:
-                course_num = int(''.join(filter(str.isdigit, course)))
-            except ValueError:
-                course_num = 0
+            course_num = get_course_number(course)
 
             is_cs_course = course.startswith("CSCI")
 
@@ -466,11 +464,7 @@ class NewCSEcon():
             technical_var = self.assignment_vars[course]["technical"]
             
             # 1. Parse the course code (e.g., "CSCI 1450" -> 1450)
-            try:
-                # Filter out the letters and grab the numbers
-                course_num = int(''.join(filter(str.isdigit, course)))
-            except ValueError:
-                course_num = 0
+            course_num = get_course_number(course)
                 
             # 2. Basic Check: Must be a CSCI course >= 1000 and not humanities
             if ((course.startswith("CSCI") and 
@@ -510,11 +504,7 @@ class NewCSEcon():
             #get the z3 variable for that course
             math_econ_var = self.assignment_vars[course]["math-econ"]
 
-            try:
-                # Filter out the letters and grab the numbers
-                course_num = int(''.join(filter(str.isdigit, course)))
-            except ValueError:
-                course_num = 0
+            course_num = get_course_number(course)
 
             #add a condition to count the requirement if allowed
             if ((course in math_econ_allowed) or 
@@ -543,12 +533,8 @@ class NewCSEcon():
         for course in self.courses:
             #get the z3 variable for that course
             econ_elect_var = self.assignment_vars[course]["econ-elective"]
-
-            try:
-                # Filter out the letters and grab the numbers
-                course_num = int(''.join(filter(str.isdigit, course)))
-            except ValueError:
-                course_num = 0
+            
+            course_num = get_course_number(course)
 
             #add a condition to count the requirement if allowed
             if (((course not in econ_elect_disallowed) and 

@@ -1,5 +1,6 @@
 from typing import Callable
 from util.json_reader import JSONReader
+from util.util import get_course_number
 
 from z3 import *
 
@@ -275,10 +276,7 @@ class NewCompBio():
 
             # Extract the course number to check the ">= 0200" rule
             # (e.g., "CSCI 0320" -> 320)
-            try:
-                course_num = int(''.join(filter(str.isdigit, course)))
-            except ValueError:
-                course_num = 0
+            course_num = get_course_number(course)
 
             is_cs_course = course.startswith("CSCI")
 
@@ -522,11 +520,7 @@ class NewCompBio():
                 for course in self.courses:
                     var = self.assignment_vars[course]["track"]
 
-                    try:
-                        # Filter out the letters and grab the numbers
-                        course_num = int(''.join(filter(str.isdigit, course)))
-                    except ValueError:
-                        course_num = 0
+                    course_num = get_course_number(course)
 
                     #add a condition to count the requirement if allowed
 
@@ -606,11 +600,7 @@ class NewCompBio():
             #get the capstone z3 variable for the course
             var = self.assignment_vars[course]["capstone"]
 
-            try:
-                # Filter out the letters and grab the numbers
-                course_num = int(''.join(filter(str.isdigit, course)))
-            except ValueError:
-                course_num = 0
+            course_num = get_course_number(course)
 
             # 1. Add if course is in the list of capstone-able courses
             if (course in cs_capstone_courses or 
