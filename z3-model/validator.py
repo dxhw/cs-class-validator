@@ -71,8 +71,8 @@ DEFAULT_NEW_APMA_CS_CONSTRAINTS_DICT = {
     "technical": True,
     "optimization": True,
     "differential": True,
-    "restricted-upper-div": True,
-    "unrestricted-upper-div": True,
+    "apma-upper-div": True,
+    "math-apma-upper-div": True,
     "capstone": True,
 }
 
@@ -150,7 +150,10 @@ def main():
             if args.requirement_version == "New" or args.requirement_version == "Either":
                 new_solver = NewCS(args.year, courses, reader, DEFAULT_NEW_CONSTRAINTS_DICT)
         case "CompBio":
-                raise(NotImplementedError("CompBio requirements not implemented yet"))
+            if args.requirement_version == "New" or args.requirement_version == "Either":
+                new_solver = NewCompBio(args.year, courses, reader, DEFAULT_NEW_COMP_BIO_CONSTRAINTS_DICT)
+            if args.requirement_version == "Old" or args.requirement_version == "Either":
+                raise(NotImplementedError("CompBio old requirements not implemented yet"))
         case "CS+ECON":
             if args.requirement_version == "New" or args.requirement_version == "Either":
                 new_solver = NewCSEcon(args.year, courses, reader, DEFAULT_NEW_CS_ECON_CONSTRAINTS_DICT)

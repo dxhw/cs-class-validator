@@ -1,15 +1,16 @@
 from typing import Callable
 from util.json_reader import JSONReader
+from util.util import get_course_number
 
 from z3 import *
 
 #SCB
 #multi
 #linear
-#ODEs
+#ODEs + PDEs
 #optimization
-#2 1000+ APMA not 1650 1910 1920 1090 
-#1 1000+ APMA or MATH (any)
+#2 1000+ APMA not 1650 1910 1920 1090 indep study
+#1 1000+ APMA or MATH not 1650 1910 1920 1090 indep study
 #intro
 #foundations + prob
 #3 1000+ technical CSCI
@@ -38,17 +39,7 @@ class NewAPMACS():
     def validate(self, degree_type: str, unknowns: int = 0, limit_of_unknowns: int = 5) -> tuple[CheckSatResult, int]:
         #Only degree types are SCB
         assert degree_type == "SCB"
-
-        print("Looking for old " + degree_type + " requirements")
-
-        # Old requirements are only allowed for c/o 2027 and earlier
-        if self.year > 2027:
-            print("These requirements are only available to students in classes 2024-2027, so this student is not eligible for them")
-            return False
-        
-        # capstones are not required for ABs
-        if degree_type == "AB":
-            self.constraint_dict["capstone"] = False
+        print("new APMA+CS " + degree_type)
 
         self.s.push()
 
@@ -133,23 +124,12 @@ class NewAPMACS():
         all_used_courses = []
         
         for req in active_reqs:
-            if req == "humanities-limit":
-                continue
-            
             # Gather all courses used for this bucket
             used_courses = [c for c in self.courses if is_true(m.evaluate(self.assignment_vars[c][req]))]
             all_used_courses.extend(used_courses)
 
             #just print everything as a standard list
             print(f"{req}: {used_courses}")
-
-        # --- Humanities Printing ---
-        humanities_list = self.reader.get_humanities_courses()
-        humanities_included_in_degree = [course for course in all_used_courses if course in humanities_list]
-        
-        # Use a set to remove duplicates (in case a humanity was used in multiple buckets)
-        unique_humanities = list(set(humanities_included_in_degree))
-        print(f"humanities courses used in degree: {unique_humanities}")
     
     ################################### UNKNOWN HANDLING #######################################
     
@@ -242,10 +222,10 @@ class NewAPMACS():
                 return self.__newOptimizationConstraint
             case "differential":
                 return self.__newDifferentialConstraint
-            case "restricted-upper-div":
-                return self.__newRestrictedUpperDivConstraint
-            case "unrestricted-upper-div":
-                return self.__newUnrestrictedUpperDivConstraint
+            case "apma-upper-div":
+                return self.__newApmaUpperDivConstraint
+            case "math-apma-upper-div":
+                return self.__newMathOrApmaUpperDivConstraint
             case "capstone":
                 return self.__newCapstoneConstraint
             case _: 
@@ -269,12 +249,7 @@ class NewAPMACS():
             intro_var = self.assignment_vars[course]["intro"]
             total_intros.append(If(intro_var, 1, 0))
 
-            # Extract the course number to check the ">= 0200" rule
-            # (e.g., "CSCI 0320" -> 320)
-            try:
-                course_num = int(''.join(filter(str.isdigit, course)))
-            except ValueError:
-                course_num = 0
+            course_num = get_course_number(course)
 
             is_cs_course = course.startswith("CSCI")
 
@@ -321,7 +296,7 @@ class NewAPMACS():
         return And(rule_exactly_two, Or(path1_valid, path2_valid), override_rule) # type: ignore
     
     def __newMultiConstraint(self, degree_type: str) -> BoolRef:
-        multi_allowed = {"MATH 0180", "MATH 0200", "MATH 0350"}
+        multi_allowed = {"MATH 0180", "MATH 0200", "MATH 0350", "APMA 0260"}
 
         total_multi_conditions = []
 
@@ -341,6 +316,62 @@ class NewAPMACS():
         final_multi_constraint = Sum(*([0] + total_multi_conditions)) == 1
         return final_multi_constraint # type: ignore
     
+    def __newLinearConstraint(self, degree_type: str) -> BoolRef:
+        linear_allowed = {"MATH 0520", "MATH 0540", "CSCI 0530", "APMA 1170", "APMA 0260"}
+        
+        # if APMA 0260 is used for both multi and linear, then we need an additional 1000+ APMA or MATH
+        # if APMA 0260 isn't in the degree or multi constraint isn't on, just default to False
+        multi_260_var = self.assignment_vars.get("APMA 0260", {}).get("multi", BoolVal(False))
+        linear_260_var = self.assignment_vars.get("APMA 0260", {}).get("linear", BoolVal(False))
+        is_double_dipping = And(multi_260_var, linear_260_var)
+
+        all_linear_vars = []
+        strictly_replacement_vars = [] 
+        valid_replacement_vars = []    
+
+        # Categorize all courses
+        for course in self.courses:
+            linear_var = self.assignment_vars[course]["linear"]
+            
+            is_standard = course in linear_allowed or course.startswith("Unknown")
+            
+            is_replacement = False
+            if course.startswith("MATH") or course.startswith("APMA"):
+                if get_course_number(course) >= 1000:
+                    is_replacement = True
+            
+            # Unknowns are wildcards and can act as replacements too
+            if course.startswith("Unknown"):
+                is_replacement = True
+                
+            # Lock out completely invalid courses
+            if not is_standard and not is_replacement:
+                self.s.add(Not(linear_var))
+            else:
+                all_linear_vars.append(linear_var)
+                
+            # Track our replacement options
+            if is_replacement:
+                valid_replacement_vars.append(linear_var)
+            if is_replacement and not is_standard:
+                strictly_replacement_vars.append(linear_var)
+
+        # tally the assignments
+        total_linear = Sum([0] + [If(v, 1, 0) for v in all_linear_vars])
+        total_strict_rep = Sum([0] + [If(v, 1, 0) for v in strictly_replacement_vars])
+        total_valid_rep = Sum([0] + [If(v, 1, 0) for v in valid_replacement_vars])
+        
+        # SCENARIO A: APMA 0260 is assigned to BOTH Multi and Linear
+        # The Linear bucket now requires exactly 2 courses: APMA 0260 and 1 valid replacement.
+        scenario_double_dip = Implies(is_double_dipping, 
+                                      And(total_linear == 2, total_valid_rep == 1))
+                                      
+        # SCENARIO B: Normal behavior (No double dipping)
+        # The Linear bucket requires exactly 1 standard course, and strict replacements are banned.
+        scenario_normal = Implies(Not(is_double_dipping), 
+                                  And(total_linear == 1, total_strict_rep == 0))
+                                  
+        return And(scenario_double_dip, scenario_normal) # type: ignore
 
     def __newFoundationsConstraint(self, degree_type: str) -> BoolRef:
         #Get the groups of foundations courses
@@ -417,27 +448,6 @@ class NewAPMACS():
         final_constraint = And(total_foundations == 3, total_branches == 3)
 
         return final_constraint # type: ignore
-    
-    def __newLinearConstraint(self, degree_type: str) -> BoolRef:
-        linear_allowed = {"MATH 0520", "MATH 0540", "CSCI 0530", "APMA 1170"}
-
-        total_linear_conditions = []
-
-        #for each course...
-        for course in self.courses:
-            #get the z3 variable for that course
-            linear_var = self.assignment_vars[course]["linear"]
-
-            #add a condition to count the requirement if allowed
-            if (course in linear_allowed) or course.startswith("Unknown"):
-                total_linear_conditions.append(If(linear_var, 1, 0))
-            else:
-                #and disallow the assignment for this requirement if not.
-                self.s.add(Not(linear_var))
-
-        #We only need 1 linear in degree
-        final_linear_constraint = Sum(*([0] + total_linear_conditions)) == 1
-        return final_linear_constraint # type: ignore
 
     def __newOptimizationConstraint(self, degree_type: str) -> BoolRef:
         optimization_allowed = {"APMA 1160", "APMA 1170", "APMA 1180", "APMA 1690", "APMA 1740"}
@@ -462,9 +472,36 @@ class NewAPMACS():
     
 
     def __newDifferentialConstraint(self, degree_type: str) -> BoolRef:
-        differential_allowed = {"APMA 0355", "APMA 0365"}
+        differential_1_allowed = {"APMA 0355"}
+        # technically, bridgework is allowed to use these past 2025 matriculators, but
+        # we are ignoring this for now
+        if self.year <= 2029:
+            differential_1_allowed.add("APMA 0330")
+            differential_1_allowed.add("APMA 0350")
+        differential_2_allowed = {"APMA 0365"}
+        if self.year <= 2029:
+            differential_2_allowed.add("APMA 0340")
+            differential_2_allowed.add("APMA 0360")
 
-        total_differential_conditions = []
+        # if there are at least 4 1000-level apma courses that are not 1910, 1920, or 
+        # research/independent study courses (1970/1971), in the transcript,
+        # MATH 1110 and MATH 1120 can be used for ODEs and PDEs respectively
+
+        # NOTE: we are NOT handling this with unknowns because it would add a LOT of additional 
+        # tracking which very few people would use anyways
+        excluded = ("1910", "1920", "1970", "1971")
+
+        count_apma_1000s = sum(
+            1 for c in self.courses
+            if c.startswith("APMA") and not c.split()[1].startswith(excluded)
+        )
+
+        if count_apma_1000s >= 4:
+            differential_1_allowed.add("MATH 1110")
+            differential_2_allowed.add("MATH 1120")
+
+        total_differential_1_conditions = []
+        total_differential_2_conditions = []
 
         #for each course...
         for course in self.courses:
@@ -472,72 +509,76 @@ class NewAPMACS():
             differential_var = self.assignment_vars[course]["differential"]
 
             #add a condition to count the requirement if allowed
-            if (course in differential_allowed) or course.startswith("Unknown"):
-                total_differential_conditions.append(If(differential_var, 1, 0))
+            if (course in differential_1_allowed) or course.startswith("Unknown"):
+                total_differential_1_conditions.append(If(differential_var, 1, 0))
+            elif (course in differential_2_allowed) or course.startswith("Unknown"):
+                total_differential_2_conditions.append(If(differential_var, 1, 0))
             else:
                 #and disallow the assignment for this requirement if not.
                 self.s.add(Not(differential_var))
 
         #We need all differential in degree
-        final_differential_constraint = Sum(*([0] + total_differential_conditions)) == 2
+        final_differential_constraint = Sum(*([0] + total_differential_1_conditions + total_differential_2_conditions)) == 2
         return final_differential_constraint # type: ignore
     
-    def __newRestrictedUpperDivConstraint(self, degree_type: str) -> BoolRef:
-        rud_disallowed = {"APMA 1650", "APMA 1910", "APMA 1920", "APMA 1090"}
-        total_rud_conditions = []
+    def __newApmaUpperDivConstraint(self, degree_type: str) -> BoolRef:
+        apma_disallowed = {"APMA 1910", "APMA 1920", "APMA 1970(1)", "APMA 1970(2)", "APMA 1971"}
+        if self.year >= 2029:
+            # APMA 1650 allowed if matriculating before Fall 2025
+            # technically, bridgework can be done, however. We are not considering this
+            apma_disallowed.add("APMA 1650")
+        total_apma_conditions = []
 
         #for each course...
         for course in self.courses:
             #get the z3 variable for that course
-            rud_var = self.assignment_vars[course]["restricted-upper-div"]
+            apma_var = self.assignment_vars[course]["apma-upper-div"]
 
-            try:
-                # Filter out the letters and grab the numbers
-                course_num = int(''.join(filter(str.isdigit, course)))
-            except ValueError:
-                course_num = 0
+            course_num = get_course_number(course)
 
             #add a condition to count the requirement if allowed
-            if ((course not in rud_disallowed and
+            if ((course not in apma_disallowed and
                 course.startswith("APMA") and 
                 course_num >= 1000) or 
                 course.startswith("Unknown")):
-                total_rud_conditions.append(If(rud_var, 1, 0))
+                total_apma_conditions.append(If(apma_var, 1, 0))
             else:
                 #and disallow the assignment for this requirement if not.
-                self.s.add(Not(rud_var))
+                self.s.add(Not(apma_var))
 
-        #We only need 3 math econ in degree
-        final_rud_constraint = Sum(*([0] + total_rud_conditions)) == 2
-        return final_rud_constraint # type: ignore
+        #We need 2 upper level APMA in degree
+        final_apma_constraint = Sum(*([0] + total_apma_conditions)) == 2
+        return final_apma_constraint # type: ignore
     
-    def __newUnrestrictedUpperDivConstraint(self, degree_type: str) -> BoolRef:
-        total_uud_conditions = []
+    def __newMathOrApmaUpperDivConstraint(self, degree_type: str) -> BoolRef:
+        math_apma_disallowed = {"APMA 1910", "APMA 1920", "MATH 1090", "MATH 1910", "APMA 1970(1)", "APMA 1970(2)", "MATH 1970(1)", "MATH 1970(2)", "APMA 1971"}
+        if self.year >= 2029:
+            # APMA 1650 allowed if matriculating before Fall 2025
+            # technically, bridgework can be done, however
+            math_apma_disallowed.add("APMA 1650")
+        total_math_apma_conditions = []
 
         #for each course...
         for course in self.courses:
             #get the z3 variable for that course
-            uud_var = self.assignment_vars[course]["unrestricted-upper-div"]
+            math_apma_var = self.assignment_vars[course]["math-apma-upper-div"]
 
-            try:
-                # Filter out the letters and grab the numbers
-                course_num = int(''.join(filter(str.isdigit, course)))
-            except ValueError:
-                course_num = 0
+            course_num = get_course_number(course)
 
             #add a condition to count the requirement if allowed
-            if (((course.startswith("MATH") or
+            if ((course not in math_apma_disallowed and
+                 (course.startswith("MATH") or
                 course.startswith("APMA")) and 
                 course_num >= 1000) or 
                 course.startswith("Unknown")):
-                total_uud_conditions.append(If(uud_var, 1, 0))
+                total_math_apma_conditions.append(If(math_apma_var, 1, 0))
             else:
                 #and disallow the assignment for this requirement if not.
-                self.s.add(Not(uud_var))
+                self.s.add(Not(math_apma_var))
 
-        #We only need 3 math econ in degree
-        final_uud_constraint = Sum(*([0] + total_uud_conditions)) == 1
-        return final_uud_constraint # type: ignore
+        #We only need 1 MATH/APMA upper level in degree
+        final_math_apma_constraint = Sum(*([0] + total_math_apma_conditions)) == 1
+        return final_math_apma_constraint # type: ignore
 
     def __newTechnicalConstraint(self, degree_type: str) -> BoolRef:
         
@@ -546,23 +587,19 @@ class NewAPMACS():
 
         valid_conditions = []
         idp_conditions = []
-        foundations_conditions = []
         
         for course in self.courses:
             #get the corresponding z3 variable for each course
             technical_var = self.assignment_vars[course]["technical"]
             
             # 1. Parse the course code (e.g., "CSCI 1450" -> 1450)
-            try:
-                # Filter out the letters and grab the numbers
-                course_num = int(''.join(filter(str.isdigit, course)))
-            except ValueError:
-                course_num = 0
+            course_num = get_course_number(course)
                 
             # 2. Basic Check: Must be a CSCI course >= 1000 and not humanities
             if ((course.startswith("CSCI") and 
                 course_num >= 1000 and
                 course not in humanities_courses) or
+                course == "EEPS 1340" or
                 course.startswith("Unknown")):
 
                 valid_conditions.append(If(technical_var, 1, 0))
@@ -575,13 +612,13 @@ class NewAPMACS():
                 # Force invalid courses (e.g., ENGN courses or < 1000 or IDP or humanities) to False
                 self.s.add(Not(technical_var))
 
-        return And(Sum(*([0] + valid_conditions)) == 3, Sum(*([0] + idp_conditions)) <= 1)
+        return And(Sum(*([0] + valid_conditions)) == 3, Sum(*([0] + idp_conditions)) <= 1) # type: ignore
 
     
     def __newCapstoneConstraint(self, degree_type: str) -> BoolRef:
         #get the list of capstones
         cs_capstone_courses: list[str] = self.reader.get_capstone_courses()
-        apma_capstone_courses = {"APMA 1360", "APMA 1970", "APMA 1971"}
+        apma_capstone_courses = {"APMA 1360", "APMA 1971"}
 
         valid_capstones = []
 
@@ -595,6 +632,7 @@ class NewAPMACS():
             course in apma_capstone_courses or 
             course.startswith("APMA 193") or
             course.startswith("APMA 194") or
+            course.startswith("APMA 1970") or
             course.startswith("Unknown")):
                 valid_capstones.append(If(var, 1, 0))
 
@@ -613,14 +651,28 @@ class NewAPMACS():
         
         #for each course...
         for course in self.courses:
-            #  humanities requirements can overlap with anything, so take them out of the restricted pool
-            restricted_reqs = [req for req in active_reqs if (req != "humanities-limit")]
             
             # get the booleans for all remaining restricted requirements
-            restricted_bools = [self.assignment_vars[course][req] for req in restricted_reqs]
+            limited_course_bools = [self.assignment_vars[course][req] for req in active_reqs]
             
             # count how many restricted buckets (requirement sets) this course is placed into
-            restricted_count = Sum(*[If(b, 1, 0) for b in restricted_bools])
+            limited_course_use_count = Sum(*[If(b, 1, 0) for b in limited_course_bools])
 
-            # do not allow these buckets to overlap AT ALL
-            self.s.add(restricted_count <= 1)
+            if course == "APMA 0260": # APMA 0260 can be used for both multi and linear, but if it is used for both, then an additional 1000+ APMA or MATH course is required
+                self.s.add(limited_course_use_count <= 2)
+            else: 
+                # do not allow these buckets to overlap AT ALL
+                self.s.add(limited_course_use_count <= 1)
+        
+        # for each of these sets of courses, only one of the courses can be used for concentration credit
+        limited_course_sets = [{"APMA 1000", "APMA 1001", "MATH 1000", "MATH 1001"},
+                               {"APMA 1650", "APMA 1655", "CSCI 1450", "MATH 1210", "MATH 1610", "ENGN 1630"},
+                               {"CSCI 0300", "CSCI 0330"},
+                               {"CSCI 0410", "CSCI 1410", "CSCI 1411"},
+                               {"EEPS 1340", "CSCI 1951A"}]
+        for limited_course_set in limited_course_sets:
+            limited_courses_used = limited_course_set.intersection(self.courses)
+            if len(limited_courses_used) >= 2:
+                limited_course_bools = [self.assignment_vars[course][req] for course in limited_courses_used for req in active_reqs]
+                limited_course_use_count = Sum(*[If(b, 1, 0) for b in limited_course_bools])
+                self.s.add(limited_course_use_count <= 1)
