@@ -28,6 +28,7 @@ class NewCS():
         #Only degree types are AB/SCB
         assert degree_type == "SCB" or degree_type == "AB"
 
+        print("Looking for new CS " + degree_type + " requirements")
 
         self.s.push()
         
