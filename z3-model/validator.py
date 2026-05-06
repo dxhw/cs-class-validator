@@ -182,8 +182,8 @@ def main():
         new_solver.validate(args.degree_type)
 
     print("\n+=============================+\n")
-    some_courses = schedules.get_json("working_comp_bio_scb")
-    newer_validator = NewAPMACS(2026, some_courses, reader, DEFAULT_NEW_APMA_CS_CONSTRAINTS_DICT)
+    some_courses = schedules.get_json("working_cs_econ_scb")
+    newer_validator = NewCSEcon(2026, some_courses, reader, DEFAULT_NEW_CS_ECON_CONSTRAINTS_DICT)
     newer_validator.validate("SCB", limit_of_unknowns=20)
 
 

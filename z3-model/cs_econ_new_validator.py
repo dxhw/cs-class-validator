@@ -510,7 +510,7 @@ class NewCSEcon():
                 self.s.add(Not(econ_elect_var))
 
         #We only need 2 econ electives in degree, only 1 can be 1000-1099
-        final_econ_elect_constraint = And(Sum(*([0] + total_econ_elect_conditions)) == 2, Sum(*([0] + total_econ_elect_conditions)) <= 1)
+        final_econ_elect_constraint = And(Sum(*([0] + total_econ_elect_conditions)) == 2, Sum(*([0] + low_level_econ_conditions)) <= 1)
         return final_econ_elect_constraint # type: ignore
     
     def __newCapstoneConstraint(self, degree_type: str) -> BoolRef:
