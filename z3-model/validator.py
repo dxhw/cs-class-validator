@@ -180,8 +180,8 @@ def main():
 
     print("\n+=============================+\n")
     some_courses = schedules.get_json("cdf_old_comp_bio")
-    newer_validator = NewCompBio(2026, some_courses, reader, DEFAULT_NEW_COMP_BIO_CONSTRAINTS_DICT)
-    newer_validator.validate("AB")
+    newer_validator = OldCS(2026, some_courses, reader, DEFAULT_OLD_CONSTRAINTS_DICT)
+    newer_validator.validate("SCB")
 
 
 if __name__ == "__main__":

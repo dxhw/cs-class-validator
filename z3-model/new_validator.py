@@ -12,12 +12,38 @@ class NewCS():
         self.courses = courses
         self.reader = reader
 
-    def validate(self, degree_type: str, unknowns: int=0):
+
+    def validate_sat(self, degree_type: str, unknowns: int = 0, limit_of_unknowns: int = 5) -> CheckSatResult:
+        if self.validate(degree_type, unknowns, limit_of_unknowns)[0]:
+            return sat
+        else:
+            return unsat
+    
+    def validate_unknowns(self, degree_type: str, unknowns: int = 0, limit_of_unknowns: int = 5) -> int:
+        return self.validate(degree_type, unknowns, limit_of_unknowns)[1]
+
+
+    def validate(self, degree_type: str, unknowns: int = 0, limit_of_unknowns: int = 5) -> tuple[CheckSatResult, int]:
         #Only degree types are AB/SCB
         assert degree_type == "SCB" or degree_type == "AB"
-        print("new " + degree_type)
+
+        print("Looking for old " + degree_type + " requirements")
+
+        # Old requirements are only allowed for c/o 2027 and earlier
+        if self.year > 2027:
+            print("These requirements are only available to students in classes 2024-2027, so this student is not eligible for them")
+            return False
+        
+        # capstones are not required for ABs
+        if degree_type == "AB":
+            self.constraint_dict["capstone"] = False
 
         self.s.push()
+
+        # if there are any unknown courses, we need to track their identities if they are
+        # intermediates specifically because that cuts across multiple constraints
+        if any([c.startswith("Unknown") for c in self.courses]):
+            self.__build_intermediate_unknown_identities()
 
         # Create the boolean matrix
         # for each course, there is a set of reqs it may or may not fulfill, so make a table of them
@@ -40,10 +66,37 @@ class NewCS():
         # no double dipping (except capstone)
         self.__doubleDippingConstraint()
 
-        is_sat = self.s.check() == sat
+        # Optimization so that we prioritize using real classes to fill pathways
+        real_courses = [c for c in self.courses if not c.startswith("Unknown")]
+        optimization_scores = []
+        
+        for c in real_courses:
+            for req in active_reqs:
+                if req == "humanities-limit":
+                    continue # Ignore dummy bounds
+                
+                # Weight core/pathways heavily to pull real courses here first
+                if req in ["intermediate", "pathways", "capstone"]:
+                    weight = 10
+                # Give electives a lower weight so they become the dump-stat for Unknowns
+                elif req == "upper-level":
+                    weight = 2
+                elif req in ["additional", "intro"]:
+                    weight = 1
+                else:
+                    weight = 1
+                    
+                # If a real course is used for this requirement, it adds the weight to the score
+                optimization_scores.append(If(self.assignment_vars[c][req], weight, 0))
+
+        if optimization_scores:
+            # Tell Z3 to maximize the total weight across the course plan
+            self.s.maximize(Sum(*([0] + optimization_scores)))
+
+        is_sat = (self.s.check() == sat, unknowns)
         
         # Print the actual course assignments if satisfied
-        if is_sat:
+        if is_sat[0]:
             if unknowns == 0:
                 self.__print_results()
             #are there unknowns involved? also print alternatives. 
@@ -54,11 +107,8 @@ class NewCS():
             self.s.pop()
         else:
             print(f"cannot form a valid {degree_type} degree")
-            print(f"trying with {unknowns + 1} inserted unknown class(es)")
             self.s.pop()
-            self.__try_with_unknowns(degree_type, unknowns)
-
-
+            is_sat = self.__try_with_unknowns(degree_type, unknowns, limit_of_unknowns)
 
         return is_sat
     
@@ -102,14 +152,15 @@ class NewCS():
     
     ################################### UNKNOWN HANDLING #######################################
     
-    def __try_with_unknowns(self, degree_type: str, num_unknowns: int, limit_of_unknown: int = 5):
-        if num_unknowns > limit_of_unknown:
+    def __try_with_unknowns(self, degree_type: str, num_unknowns: int, limit_of_unknowns: int = 6):
+        if num_unknowns > limit_of_unknowns - 1:
             print("Too many unknowns to build a degree!")
-            return False
+            return (unsat, num_unknowns)
         
         count = num_unknowns + 1
         self.courses.append(f"Unknown {count}")
-        is_sat = self.validate(degree_type, num_unknowns + 1)
+        print(f"trying with {count} inserted unknown class(es)")
+        is_sat = self.validate(degree_type, num_unknowns + 1, limit_of_unknowns)
 
         return is_sat
         
