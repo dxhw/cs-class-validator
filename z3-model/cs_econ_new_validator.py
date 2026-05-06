@@ -48,7 +48,7 @@ class NewCSEcon():
         return self.validate(degree_type, unknowns, limit_of_unknowns)[1]
 
 
-    def validate(self, degree_type: str, unknowns: int = 0, limit_of_unknowns: int = 5) -> tuple[CheckSatResult, int]:
+    def validate(self, degree_type: str, unknowns: int = 0, limit_of_unknowns: int = 5) -> tuple[bool, int]:
         #Only degree types are AB/SCB
         assert degree_type == "SCB" or degree_type == "AB"
 

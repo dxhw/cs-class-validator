@@ -29,7 +29,7 @@ class OldCS():
     def validate_unknowns(self, degree_type: str, unknowns: int = 0, limit_of_unknowns: int = 5) -> int:
         return self.validate(degree_type, unknowns, limit_of_unknowns)[1]
 
-    def validate(self, degree_type: str, unknowns: int = 0, limit_of_unknowns: int = 5) -> tuple[CheckSatResult, int]:
+    def validate(self, degree_type: str, unknowns: int = 0, limit_of_unknowns: int = 5) -> tuple[bool, int]:
         #Only degree types are AB/SCB
         assert degree_type == "SCB" or degree_type == "AB"
 
@@ -38,7 +38,7 @@ class OldCS():
         # Old requirements are only allowed for c/o 2027 and earlier
         if self.year > 2027:
             print("These requirements are only available to students in classes 2024-2027, so this student is not eligible for them")
-            return False
+            return (False, 0)
         
         # capstones are not required for ABs
         if degree_type == "AB":
