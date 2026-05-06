@@ -413,7 +413,7 @@ class NewAPMACS():
         total_branches = Sum(*([0] + category_active_vars))
 
         #3 foundations courses are needed, which span the 3 branches
-        final_constraint = And(total_foundations == 3, total_branches == 3)
+        final_constraint = And(total_foundations == 4, total_branches == 4)
 
         return final_constraint # type: ignore
 
