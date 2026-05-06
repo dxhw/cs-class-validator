@@ -182,9 +182,9 @@ def main():
         new_solver.validate(args.degree_type)
 
     print("\n+=============================+\n")
-    some_courses = schedules.get_json("cdf_old_comp_bio")
-    newer_validator = OldCS(2026, some_courses, reader, DEFAULT_OLD_CONSTRAINTS_DICT)
-    newer_validator.validate("SCB")
+    some_courses = schedules.get_json("working_comp_bio_scb")
+    newer_validator = NewAPMACS(2026, some_courses, reader, DEFAULT_NEW_APMA_CS_CONSTRAINTS_DICT)
+    newer_validator.validate("SCB", limit_of_unknowns=20)
 
 
 if __name__ == "__main__":
