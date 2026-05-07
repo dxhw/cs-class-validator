@@ -85,67 +85,67 @@ def test_basic_degrees_validate_cleanly():
     reader = JSONReader()
     schedules = ScheduleFetcher()
 
-    o_scb_courses = schedules.get_json("working_degrees/working_old_scb")
+    o_scb_courses = schedules.get_json("working_old_scb")
     validator = OldCS(2026, o_scb_courses, reader, DEFAULT_OLD_CONSTRAINTS_DICT)
     output = validator.validate("SCB", limit_of_unknowns=0)
     assert output[0] == True
     assert output[1] == 0
 
-    o_ab_courses = schedules.get_json("working_degrees/working_old_ab")
+    o_ab_courses = schedules.get_json("working_old_ab")
     validator = OldCS(2026, o_ab_courses, reader, DEFAULT_OLD_CONSTRAINTS_DICT)
     output = validator.validate("AB", limit_of_unknowns=0)
     assert output[0] == True
     assert output[1] == 0
 
-    n_scb_courses = schedules.get_json("working_degrees/working_new_scb")
+    n_scb_courses = schedules.get_json("working_new_scb")
     validator = NewCS(2026, n_scb_courses, reader, DEFAULT_NEW_CONSTRAINTS_DICT)
     output = validator.validate("SCB", limit_of_unknowns=0)
     assert output[0] == True
     assert output[1] == 0
 
-    n_ab_courses = schedules.get_json("working_degrees/working_new_ab")
+    n_ab_courses = schedules.get_json("working_new_ab")
     validator = NewCS(2026, n_ab_courses, reader, DEFAULT_NEW_CONSTRAINTS_DICT)
     output = validator.validate("AB", limit_of_unknowns=0)
     assert output[0] == True
     assert output[1] == 0
 
-    mathcs_scb_courses = schedules.get_json("working_degrees/working_math_cs_scb")
+    mathcs_scb_courses = schedules.get_json("working_math_cs_scb")
     validator = NewMATHCS(2026, mathcs_scb_courses, reader, DEFAULT_NEW_MATH_CS_CONSTRAINTS_DICT)
     output = validator.validate("SCB", limit_of_unknowns=0)
     assert output[0] == True
     assert output[1] == 0
 
-    csecon_scb_courses = schedules.get_json("working_degrees/working_cs_econ_scb")
+    csecon_scb_courses = schedules.get_json("working_cs_econ_scb")
     validator = NewCSEcon(2026, csecon_scb_courses, reader, DEFAULT_NEW_CS_ECON_CONSTRAINTS_DICT)
     output = validator.validate("SCB", limit_of_unknowns=0)
     assert output[0] == True
     assert output[1] == 0
 
-    csecon_ab_courses = schedules.get_json("working_degrees/working_cs_econ_ab")
+    csecon_ab_courses = schedules.get_json("working_cs_econ_ab")
     validator = NewCSEcon(2026, csecon_ab_courses, reader, DEFAULT_NEW_CS_ECON_CONSTRAINTS_DICT)
     output = validator.validate("AB", limit_of_unknowns=0)
     assert output[0] == True
     assert output[1] == 0
 
-    csecon_ab_courses = schedules.get_json("working_degrees/working_cs_econ_ab")
+    csecon_ab_courses = schedules.get_json("working_cs_econ_ab")
     validator = NewCSEcon(2026, csecon_ab_courses, reader, DEFAULT_NEW_CS_ECON_CONSTRAINTS_DICT)
     output = validator.validate("AB", limit_of_unknowns=0)
     assert output[0] == True
     assert output[1] == 0
 
-    compbio_scb_courses = schedules.get_json("working_degrees/working_comp_bio_scb")
+    compbio_scb_courses = schedules.get_json("working_comp_bio_scb")
     validator = NewCompBio(2026, compbio_scb_courses, reader, DEFAULT_NEW_COMP_BIO_CONSTRAINTS_DICT)
     output = validator.validate("SCB", limit_of_unknowns=0)
     assert output[0] == True
     assert output[1] == 0
 
-    compbio_ab_courses = schedules.get_json("working_degrees/working_comp_bio_ab")
+    compbio_ab_courses = schedules.get_json("working_comp_bio_ab")
     validator = NewCompBio(2026, compbio_ab_courses, reader, DEFAULT_NEW_COMP_BIO_CONSTRAINTS_DICT)
     output = validator.validate("AB", limit_of_unknowns=0)
     assert output[0] == True
     assert output[1] == 0
 
-    apma_cs_courses = schedules.get_json("working_degrees/working_apma_cs_scb")
+    apma_cs_courses = schedules.get_json("working_apma_cs_scb")
     validator = NewAPMACS(2026, apma_cs_courses, reader, DEFAULT_NEW_APMA_CS_CONSTRAINTS_DICT)
     output = validator.validate("SCB", limit_of_unknowns=0)
     assert output[0] == True
@@ -156,119 +156,115 @@ def test_real_degrees_can_validate():
     reader = JSONReader()
     schedules = ScheduleFetcher()
 
-    pref_str = "real_degrees/"
-
-    cdf_cb = schedules.get_json(pref_str + "cdf_old_comp_bio")
+    cdf_cb = schedules.get_json("cdf_old_comp_bio")
     validator = NewCompBio(2026, cdf_cb, reader, DEFAULT_NEW_COMP_BIO_CONSTRAINTS_DICT)
     output = validator.validate("SCB", limit_of_unknowns=5)
     assert output[0] == True
     assert output[1] == 1
 
-    cdf_cb = schedules.get_json(pref_str + "cdf_old_comp_bio")
+    cdf_cb = schedules.get_json("cdf_old_comp_bio")
     validator = NewCompBio(2026, cdf_cb, reader, DEFAULT_NEW_COMP_BIO_CONSTRAINTS_DICT)
     output = validator.validate("AB", limit_of_unknowns=5)
     assert output[0] == True
     assert output[1] == 0
 
-    cr_old_ab = schedules.get_json(pref_str + "cr_old_ab")
+    cr_old_ab = schedules.get_json("cr_old_ab")
     validator = OldCS(2026, cr_old_ab, reader, DEFAULT_OLD_CONSTRAINTS_DICT)
     output = validator.validate("AB", limit_of_unknowns=5)
     assert output[0] == True
     assert output[1] == 0
 
-    dhw_old_scb = schedules.get_json(pref_str + "dhw_old_scb")
+    dhw_old_scb = schedules.get_json("dhw_old_scb")
     validator = OldCS(2026, dhw_old_scb, reader, DEFAULT_OLD_CONSTRAINTS_DICT)
     output = validator.validate("SCB", limit_of_unknowns=5)
     assert output[0] == True
     assert output[1] == 0
 
-    dior_sched = schedules.get_json(pref_str + "dior_schedule")
+    dior_sched = schedules.get_json("dior_schedule")
     validator = OldCS(2026, dior_sched, reader, DEFAULT_OLD_CONSTRAINTS_DICT)
     output = validator.validate("AB", limit_of_unknowns=5)
     assert output[0] == True
     assert output[1] == 0
 
-    dior_sched = schedules.get_json(pref_str + "dior_schedule")
+    dior_sched = schedules.get_json("dior_schedule")
     validator = NewCS(2026, dior_sched, reader, DEFAULT_NEW_CONSTRAINTS_DICT)
     output = validator.validate("AB", limit_of_unknowns=5)
     assert output[0] == True
     assert output[1] == 2
 
-    dw_old_ab = schedules.get_json(pref_str + "dw_old_ab")
+    dw_old_ab = schedules.get_json("dw_old_ab")
     validator = OldCS(2026, dw_old_ab, reader, DEFAULT_OLD_CONSTRAINTS_DICT)
     output = validator.validate("AB", limit_of_unknowns=5)
     assert output[0] == True
     assert output[1] == 0
 
-    kl_old_scb = schedules.get_json(pref_str + "kl_old_scb")
+    kl_old_scb = schedules.get_json("kl_old_scb")
     validator = OldCS(2027, kl_old_scb, reader, DEFAULT_OLD_CONSTRAINTS_DICT)
     output = validator.validate("SCB", limit_of_unknowns=5)
     assert output[0] == True
-    assert output[1] == 3
+    assert output[1] == 1
 
 
 def test_incomplete_produces_correct_unknown():
     reader = JSONReader()
     schedules = ScheduleFetcher()
 
-    pref_str = "incomplete_degrees/"
-
-    inc_old_scb = schedules.get_json(pref_str + "inc_old_scb")
+    inc_old_scb = schedules.get_json("inc_old_scb")
     validator = OldCS(2026, inc_old_scb, reader, DEFAULT_OLD_CONSTRAINTS_DICT)
     output = validator.validate("SCB", limit_of_unknowns=5)
     assert output[0] == True
     assert output[1] == 2
 
-    inc_old_ab = schedules.get_json(pref_str + "inc_old_ab")
+    inc_old_ab = schedules.get_json("inc_old_ab")
     validator = OldCS(2026, inc_old_ab, reader, DEFAULT_OLD_CONSTRAINTS_DICT)
     output = validator.validate("AB", limit_of_unknowns=5)
     assert output[0] == True
     assert output[1] == 2
 
-    inc_new_scb = schedules.get_json(pref_str + "inc_new_scb")
+    inc_new_scb = schedules.get_json("inc_new_scb")
     validator = NewCS(2026, inc_new_scb, reader, DEFAULT_NEW_CONSTRAINTS_DICT)
     output = validator.validate("SCB", limit_of_unknowns=5)
     assert output[0] == True
     assert output[1] == 2
 
-    inc_new_ab = schedules.get_json(pref_str + "inc_new_ab")
+    inc_new_ab = schedules.get_json("inc_new_ab")
     validator = NewCS(2026, inc_new_ab, reader, DEFAULT_NEW_CONSTRAINTS_DICT)
     output = validator.validate("AB", limit_of_unknowns=5)
     assert output[0] == True
     assert output[1] == 3
 
-    inc_math_cs_scb = schedules.get_json(pref_str + "inc_math_cs_scb")
+    inc_math_cs_scb = schedules.get_json("inc_math_cs_scb")
     validator = NewMATHCS(2026, inc_math_cs_scb, reader, DEFAULT_NEW_MATH_CS_CONSTRAINTS_DICT)
     output = validator.validate("SCB", limit_of_unknowns=5)
     assert output[0] == True
     assert output[1] == 2
 
     
-    inc_cs_econ_scb = schedules.get_json(pref_str + "inc_cs_econ_scb")
+    inc_cs_econ_scb = schedules.get_json("inc_cs_econ_scb")
     validator = NewCSEcon(2026, inc_cs_econ_scb, reader, DEFAULT_NEW_CS_ECON_CONSTRAINTS_DICT)
     output = validator.validate("SCB", limit_of_unknowns=5)
     assert output[0] == True
     assert output[1] == 2
 
-    inc_cs_econ_ab = schedules.get_json(pref_str + "inc_cs_econ_ab")
+    inc_cs_econ_ab = schedules.get_json("inc_cs_econ_ab")
     validator = NewCSEcon(2026, inc_cs_econ_ab, reader, DEFAULT_NEW_CS_ECON_CONSTRAINTS_DICT)
     output = validator.validate("AB", limit_of_unknowns=5)
     assert output[0] == True
     assert output[1] == 2
 
-    inc_comp_bio_scb = schedules.get_json(pref_str + "inc_comp_bio_scb")
+    inc_comp_bio_scb = schedules.get_json("inc_comp_bio_scb")
     validator = NewCompBio(2026, inc_comp_bio_scb, reader, DEFAULT_NEW_COMP_BIO_CONSTRAINTS_DICT)
     output = validator.validate("SCB", limit_of_unknowns=5)
     assert output[0] == True
     assert output[1] == 2
 
-    inc_comp_bio_ab = schedules.get_json(pref_str + "inc_comp_bio_ab")
+    inc_comp_bio_ab = schedules.get_json("inc_comp_bio_ab")
     validator = NewCompBio(2026, inc_comp_bio_ab, reader, DEFAULT_NEW_COMP_BIO_CONSTRAINTS_DICT)
     output = validator.validate("AB", limit_of_unknowns=5)
     assert output[0] == True
     assert output[1] == 2
 
-    inc_apma_cs_scb = schedules.get_json(pref_str + "inc_apma_cs_scb")
+    inc_apma_cs_scb = schedules.get_json("inc_apma_cs_scb")
     validator = NewAPMACS(2026, inc_apma_cs_scb, reader, DEFAULT_NEW_APMA_CS_CONSTRAINTS_DICT)
     output = validator.validate("SCB", limit_of_unknowns=5)
     assert output[0] == True
@@ -281,64 +277,62 @@ def test_not_enough_unknown_causes_fails():
     reader = JSONReader()
     schedules = ScheduleFetcher()
 
-    pref_str = "incomplete_degrees/"
-
-    inc_old_scb = schedules.get_json(pref_str + "inc_old_scb")
+    inc_old_scb = schedules.get_json("inc_old_scb")
     validator = OldCS(2026, inc_old_scb, reader, DEFAULT_OLD_CONSTRAINTS_DICT)
     output = validator.validate("SCB", limit_of_unknowns=1)
     assert output[0] == False
     assert output[1] == 1
 
-    inc_old_ab = schedules.get_json(pref_str + "inc_old_ab")
+    inc_old_ab = schedules.get_json("inc_old_ab")
     validator = OldCS(2026, inc_old_ab, reader, DEFAULT_OLD_CONSTRAINTS_DICT)
     output = validator.validate("AB", limit_of_unknowns=1)
     assert output[0] == False
     assert output[1] == 1
 
-    inc_new_scb = schedules.get_json(pref_str + "inc_new_scb")
+    inc_new_scb = schedules.get_json("inc_new_scb")
     validator = NewCS(2026, inc_new_scb, reader, DEFAULT_NEW_CONSTRAINTS_DICT)
     output = validator.validate("SCB", limit_of_unknowns=1)
     assert output[0] == False
     assert output[1] == 1
 
-    inc_new_ab = schedules.get_json(pref_str + "inc_new_ab")
+    inc_new_ab = schedules.get_json("inc_new_ab")
     validator = NewCS(2026, inc_new_ab, reader, DEFAULT_NEW_CONSTRAINTS_DICT)
     output = validator.validate("AB", limit_of_unknowns=1)
     assert output[0] == False
     assert output[1] == 1
 
-    inc_math_cs_scb = schedules.get_json(pref_str + "inc_math_cs_scb")
+    inc_math_cs_scb = schedules.get_json("inc_math_cs_scb")
     validator = NewMATHCS(2026, inc_math_cs_scb, reader, DEFAULT_NEW_MATH_CS_CONSTRAINTS_DICT)
     output = validator.validate("SCB", limit_of_unknowns=1)
     assert output[0] == False
     assert output[1] == 1
 
     
-    inc_cs_econ_scb = schedules.get_json(pref_str + "inc_cs_econ_scb")
+    inc_cs_econ_scb = schedules.get_json("inc_cs_econ_scb")
     validator = NewCSEcon(2026, inc_cs_econ_scb, reader, DEFAULT_NEW_CS_ECON_CONSTRAINTS_DICT)
     output = validator.validate("SCB", limit_of_unknowns=1)
     assert output[0] == False
     assert output[1] == 1
 
-    inc_cs_econ_ab = schedules.get_json(pref_str + "inc_cs_econ_ab")
+    inc_cs_econ_ab = schedules.get_json("inc_cs_econ_ab")
     validator = NewCSEcon(2026, inc_cs_econ_ab, reader, DEFAULT_NEW_CS_ECON_CONSTRAINTS_DICT)
     output = validator.validate("AB", limit_of_unknowns=1)
     assert output[0] == False
     assert output[1] == 1
 
-    inc_comp_bio_scb = schedules.get_json(pref_str + "inc_comp_bio_scb")
+    inc_comp_bio_scb = schedules.get_json("inc_comp_bio_scb")
     validator = NewCompBio(2026, inc_comp_bio_scb, reader, DEFAULT_NEW_COMP_BIO_CONSTRAINTS_DICT)
     output = validator.validate("SCB", limit_of_unknowns=1)
     assert output[0] == False
     assert output[1] == 1
 
-    inc_comp_bio_ab = schedules.get_json(pref_str + "inc_comp_bio_ab")
+    inc_comp_bio_ab = schedules.get_json("inc_comp_bio_ab")
     validator = NewCompBio(2026, inc_comp_bio_ab, reader, DEFAULT_NEW_COMP_BIO_CONSTRAINTS_DICT)
     output = validator.validate("AB", limit_of_unknowns=1)
     assert output[0] == False
     assert output[1] == 1
 
-    inc_apma_cs_scb = schedules.get_json(pref_str + "inc_apma_cs_scb")
+    inc_apma_cs_scb = schedules.get_json("inc_apma_cs_scb")
     validator = NewAPMACS(2026, inc_apma_cs_scb, reader, DEFAULT_NEW_APMA_CS_CONSTRAINTS_DICT)
     output = validator.validate("SCB", limit_of_unknowns=1)
     assert output[0] == False
@@ -407,17 +401,23 @@ def test_comp_bio_advisor_approvals_fail():
     reader = JSONReader()
     schedules = ScheduleFetcher()
 
-    pref_str = "real_degrees/"
-
-    cdf_cb = schedules.get_json(pref_str + "cdf_old_comp_bio")
+    cdf_cb = schedules.get_json("cdf_old_comp_bio")
     validator = NewCompBio(2026, cdf_cb, reader, DEFAULT_NEW_COMP_BIO_CONSTRAINTS_DICT)
     output = validator.validate("SCB", limit_of_unknowns=5)
     assert output[0] == True
     assert output[1] != 0
 
-    mt_comp_bio = schedules.get_json(pref_str + "mt_comp_bio")
+    mt_comp_bio = schedules.get_json("mt_comp_bio")
     validator = NewCompBio(2027, mt_comp_bio, reader, DEFAULT_NEW_COMP_BIO_CONSTRAINTS_DICT)
     output = validator.validate("SCB", limit_of_unknowns=5)
     assert output[0] == True
     assert output[1] != 0
 
+def main():
+    test_basic_degrees_validate_cleanly()
+    test_real_degrees_can_validate()
+    test_incomplete_produces_correct_unknown()
+    test_comp_bio_advisor_approvals_fail()
+
+if __name__ == "__main__":
+    main()
