@@ -1,6 +1,7 @@
 from typing import Callable
 from util.json_reader import JSONReader
 from util.util import get_course_number
+from copy import deepcopy
 
 from z3 import *
 
@@ -11,7 +12,7 @@ class OldCS():
         # We are using an optimizer rather than a solver here so that we can get unknowns to prefer
         # elective positions instead of pathways, which makes for more flexible degree suggestions
         self.s = Optimize()
-        self.constraint_dict = constraint_dict
+        self.constraint_dict = deepcopy(constraint_dict)
         self.year = year # if you are above class of 2027, these requirements are not available
         self.courses = courses
         self.reader = reader

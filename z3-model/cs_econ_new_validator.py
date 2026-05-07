@@ -1,6 +1,7 @@
 from typing import Callable
 from util.json_reader import JSONReader
 from util.util import get_course_number
+from copy import deepcopy
 
 from z3 import *
 
@@ -32,7 +33,7 @@ class NewCSEcon():
     def  __init__(self, year: int, courses: list[str], reader: JSONReader, constraint_dict: dict[str, bool], printing: bool=True):
         #set up our class
         self.s = Solver()
-        self.constraint_dict = constraint_dict
+        self.constraint_dict = deepcopy(constraint_dict)
         self.year = year 
         self.courses = courses
         self.reader = reader
@@ -52,6 +53,11 @@ class NewCSEcon():
     def validate(self, degree_type: str, unknowns: int = 0, limit_of_unknowns: int = 5) -> tuple[bool, int]:
         #Only degree types are AB/SCB
         assert degree_type == "SCB" or degree_type == "AB"
+
+        # the AB has no capstone and no econ electives
+        if degree_type == "AB":
+            self.constraint_dict["capstone"] = False
+            self.constraint_dict["econ-elective"] = False
 
         self.__my_print("Looking for CS+Econ " + degree_type + " requirements")
 
@@ -76,7 +82,7 @@ class NewCSEcon():
             constraint_func = self.__constraint_func_mapper(req)
             self.s.add(constraint_func(degree_type))
 
-        # no double dipping (except capstone)
+        # no double dipping
         self.__doubleDippingConstraint()
 
         is_sat = (self.s.check() == sat, unknowns)
@@ -119,14 +125,6 @@ class NewCSEcon():
 
             #just print everything as a standard list
             self.__my_print(f"{req}: {used_courses}")
-
-        # --- Humanities Printing ---
-        humanities_list = self.reader.get_humanities_courses()
-        humanities_included_in_degree = [course for course in all_used_courses if course in humanities_list]
-        
-        # Use a set to remove duplicates (in case a humanity was used in multiple buckets)
-        unique_humanities = list(set(humanities_included_in_degree))
-        self.__my_print(f"humanities courses used in degree: {unique_humanities}")
 
     def __my_print(self, *args, **kwargs):
         if self.printing:
@@ -387,14 +385,17 @@ class NewCSEcon():
         total_foundations = Sum(*([0] + all_slot_sums))
         total_branches = Sum(*([0] + category_active_vars))
 
-        #3 foundations courses are needed, which span the 3 branches
+        #2 foundations courses are needed, which span 2 branches
         final_constraint = And(total_foundations == 2, total_branches == 2)
 
         return final_constraint # type: ignore
     
     def __newMicroMacroMetricsConstraint(self, degree_type: str) -> BoolRef:
-        mmm_allowed = {"ECON 1130", "ECON 1210", "ECON 1630"}
+        micro_allowed = {"ECON 1130", "ECON 1110"}
+        macro_metrics_allowed = {"ECON 1210", "ECON 1630"}
 
+        total_macro_metrics_conditions = []
+        total_micro_conditions = []
         total_mmm_conditions = []
 
         #for each course...
@@ -403,22 +404,31 @@ class NewCSEcon():
             mmm_var = self.assignment_vars[course]["micro-macro-metrics"]
 
             #add a condition to count the requirement if allowed
-            if (course in mmm_allowed) or course.startswith("Unknown"):
+            if (course in macro_metrics_allowed):
+                total_macro_metrics_conditions.append(If(mmm_var, 1, 0))
+                total_mmm_conditions.append(If(mmm_var, 1, 0))
+            elif (course in micro_allowed):
+                total_micro_conditions.append(If(mmm_var, 1, 0))
+                total_mmm_conditions.append(If(mmm_var, 1, 0))
+            elif course.startswith("Unknown"):
+                total_macro_metrics_conditions.append(If(mmm_var, 1, 0))
+                total_micro_conditions.append(If(mmm_var, 1, 0))
                 total_mmm_conditions.append(If(mmm_var, 1, 0))
             else:
                 #and disallow the assignment for this requirement if not.
                 self.s.add(Not(mmm_var))
 
-        #We only need all micro/macro/metrics in degree
-        final_mmm_constraint = Sum(*([0] + total_mmm_conditions)) == 3
-        return final_mmm_constraint # type: ignore
+        #We need all micro/macro/metrics in degree
+        final_micro_constraint = Sum(*([0] + total_micro_conditions)) == 1
+        final_macro_metrics_constraint = Sum(*([0] + total_macro_metrics_conditions)) == 2
+        final_mmm_total_constraint = Sum(*([0] + total_mmm_conditions)) == 3
+        return And(final_micro_constraint, final_macro_metrics_constraint, final_mmm_total_constraint) # type: ignore
     
     def __newTechnicalConstraint(self, degree_type: str) -> BoolRef:
         
         #get the list of humanities courses to check against
         humanities_courses: list[str] = self.reader.get_humanities_courses()
-        foundations_requirements: list[str] = self.reader.get_new_foundations()
-
+        foundations_requirements: set[str] = self.reader.get_flat_foundations()
 
         valid_conditions = []
         idp_conditions = []
@@ -436,6 +446,7 @@ class NewCSEcon():
                 course_num >= 1000 and
                 course not in humanities_courses) or 
                 (course in foundations_requirements) or
+                course == "EEPS 1340" or
                 course.startswith("Unknown")):
 
                 valid_conditions.append(If(technical_var, 1, 0))
@@ -444,8 +455,8 @@ class NewCSEcon():
                 if course.startswith("CSCI 1970"):
                     idp_conditions.append(If(technical_var, 1, 0))
                 
-                #if the course is a foundations, track this
-                if course in foundations_requirements:
+                #if the course is a 100-level foundations, track this
+                if course in foundations_requirements and course_num < 1000:
                     foundations_conditions.append(If(technical_var, 1, 0))
 
             else:
@@ -454,13 +465,15 @@ class NewCSEcon():
 
         if degree_type == "SCB":
             # We need exactly 3 upper-level courses, only one of which can be 1970 and another a foundations course
-            return And(Sum(*([0] + valid_conditions)) == 3, Sum(*([0] + idp_conditions)) <= 1, Sum(*([0] + foundations_conditions)) <= 1)
+            return And(Sum(*([0] + valid_conditions)) == 3, Sum(*([0] + idp_conditions)) <= 1, Sum(*([0] + foundations_conditions)) <= 1) # type: ignore
         else:
             # We need exactly 2 upper-level courses, only one of which can be 1970 and another a foundations course
-            return And(Sum(*([0] + valid_conditions)) == 2, Sum(*([0] + idp_conditions)) <= 1, Sum(*([0] + foundations_conditions)) <= 1)
+            return And(Sum(*([0] + valid_conditions)) == 2, Sum(*([0] + idp_conditions)) <= 1, Sum(*([0] + foundations_conditions)) <= 1) # type: ignore
 
     def __newMathEconConstraint(self, degree_type: str) -> BoolRef:
         math_econ_allowed: list[str] = self.reader.get_new_math_econ()
+        if "ECON 1470" in self.courses or "ECON 1870" in self.courses:
+            math_econ_allowed.append("CSCI 1951K")
 
         total_math_econ_conditions = []
 
@@ -480,8 +493,10 @@ class NewCSEcon():
                 #and disallow the assignment for this requirement if not.
                 self.s.add(Not(math_econ_var))
 
-        #We only need 3 math econ in degree
-        final_math_econ_constraint = Sum(*([0] + total_math_econ_conditions)) == 3
+        # We only need 3 math econ in degree
+        # but if we are using ECON 1110 as our micro requirement, we need one additional course in this group
+        non_math_micro_used = self.assignment_vars.get("ECON 1110", {}).get("micro-macro-metrics", BoolVal(False))
+        final_math_econ_constraint = Sum(*([0] + total_math_econ_conditions)) == (3 + If(non_math_micro_used, 1, 0)) # type: ignore
         return final_math_econ_constraint # type: ignore
     
     def __newEconElectiveConstraint(self, degree_type: str) -> BoolRef:
@@ -490,7 +505,7 @@ class NewCSEcon():
                 self.s.add(Not(self.assignment_vars[course]["econ-elective"]))
             return BoolVal(True)
         
-        econ_elect_disallowed = {"ECON 1620", "ECON 1960", "ECON 1970"}
+        econ_elect_disallowed = {"ECON 1620", "ECON 1960", "ECON 1970(1)", "ECON 1970(2)"}
         total_econ_elect_conditions = []
         low_level_econ_conditions = []
 
@@ -519,11 +534,6 @@ class NewCSEcon():
         return final_econ_elect_constraint # type: ignore
     
     def __newCapstoneConstraint(self, degree_type: str) -> BoolRef:
-        if degree_type == "AB": #this isn't a req for ABs
-            for course in self.courses:
-                self.s.add(Not(self.assignment_vars[course]["capstone"]))
-            return BoolVal(True)
-
         #get the list of capstones
         cs_capstone_courses: list[str] = self.reader.get_capstone_courses()
         econ_capstone_courses: list[str] = self.reader.get_econ_capstone_courses()
@@ -556,14 +566,29 @@ class NewCSEcon():
         
         #for each course...
         for course in self.courses:
-            # capstones and humanities requirements can overlap with anything, so take them out of the restricted pool
-            restricted_reqs = [req for req in active_reqs if (req != "capstone" and req != "humanities-limit")]
+            # capstone needs to be its own course, so all categories are restricted
             
             # get the booleans for all remaining restricted requirements
-            restricted_bools = [self.assignment_vars[course][req] for req in restricted_reqs]
+            restricted_bools = [self.assignment_vars[course][req] for req in active_reqs]
             
             # count how many restricted buckets (requirement sets) this course is placed into
             restricted_count = Sum(*[If(b, 1, 0) for b in restricted_bools])
 
             # do not allow these buckets to overlap AT ALL
             self.s.add(restricted_count <= 1)
+
+            # CSCI 0220 cannot be used for the degree at all
+            if course == "CSCI 0220":
+                self.s.add(restricted_count == 0)
+
+        # for each of these sets of courses, only one of the courses can be used for concentration credit
+        limited_course_sets = [{"APMA 1650", "APMA 1655", "CSCI 1450"},
+                               {"CSCI 0300", "CSCI 0330"},
+                               {"CSCI 0410", "CSCI 1410", "CSCI 1411"},
+                               {"EEPS 1340", "CSCI 1951A"}]
+        for limited_course_set in limited_course_sets:
+            limited_courses_used = limited_course_set.intersection(self.courses)
+            if len(limited_courses_used) >= 2:
+                limited_course_bools = [self.assignment_vars[course][req] for course in limited_courses_used for req in active_reqs]
+                limited_course_use_count = Sum(*[If(b, 1, 0) for b in limited_course_bools])
+                self.s.add(limited_course_use_count <= 1)

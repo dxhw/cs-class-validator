@@ -1,6 +1,7 @@
 from typing import Callable
 from util.json_reader import JSONReader
 from util.util import get_course_number
+from copy import deepcopy
 
 from z3 import *
 
@@ -21,7 +22,7 @@ class NewAPMACS():
     def  __init__(self, year: int, courses: list[str], reader: JSONReader, constraint_dict: dict[str, bool], printing: bool=True):
         #set up our class
         self.s = Solver()
-        self.constraint_dict = constraint_dict
+        self.constraint_dict = deepcopy(constraint_dict)
         self.year = year 
         self.courses = courses
         self.reader = reader
