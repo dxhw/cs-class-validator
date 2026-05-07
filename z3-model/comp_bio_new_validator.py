@@ -122,7 +122,7 @@ class NewCompBio():
     def __try_with_unknowns(self, degree_type: str, num_unknowns: int, limit_of_unknowns: int = 6):
         if num_unknowns > limit_of_unknowns - 1:
             print("Too many unknowns to build a degree!")
-            return (unsat, num_unknowns)
+            return (False, num_unknowns)
         
         count = num_unknowns + 1
         self.courses.append(f"Unknown {count}")
@@ -428,8 +428,8 @@ class NewCompBio():
                 #and disallow the assignment for this requirement if not.
                 self.s.add(Not(elective_var))
 
-        #We only need 3 elective in degree
-        final_elective_constraint = Sum(*([0] + total_elective_conditions)) == 3
+        #We only need 2 elective in degree
+        final_elective_constraint = Sum(*([0] + total_elective_conditions)) == 2
         return final_elective_constraint # type: ignore
     
 
@@ -562,10 +562,12 @@ class NewCompBio():
             course_num = get_course_number(course)
 
             # 1. Add if course is in the list of capstone-able courses
-            if (course in cs_capstone_courses or 
-                course.startswith("BIOL 1950") or #BIOL IDP
+            if (course.startswith("BIOL 1950") or #BIOL IDP
                 course.startswith("BIOL 1960") or
                 course.startswith("APMA 1970") or #APMA IDP
+                course.startswith("CSCI 1970") or #CSCI IDP
+                course.startswith("NEUR 1970") or #NEUR IDP
+                course.startswith("CHEM 1970") or #CHEM IDP
                 (
                     (course.startswith("CSCI") or 
                      course.startswith("BIOL") or 

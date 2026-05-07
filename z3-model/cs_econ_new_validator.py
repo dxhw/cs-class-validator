@@ -132,7 +132,7 @@ class NewCSEcon():
     def __try_with_unknowns(self, degree_type: str, num_unknowns: int, limit_of_unknowns: int = 6):
         if num_unknowns > limit_of_unknowns - 1:
             print("Too many unknowns to build a degree!")
-            return (unsat, num_unknowns)
+            return (False, num_unknowns)
         
         count = num_unknowns + 1
         self.courses.append(f"Unknown {count}")
