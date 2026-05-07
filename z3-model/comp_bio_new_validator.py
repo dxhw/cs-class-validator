@@ -48,6 +48,13 @@ class NewCompBio():
         #Only degree types are AB/SCB
         assert degree_type == "SCB" or degree_type == "AB"
 
+        if degree_type == "AB":
+            self.constraint_dict["discrete"] = False
+            self.constraint_dict["track"] = False
+
+        if degree_type == "SCB":
+            self.constraint_dict["elective"] = False
+
         self.__my_print("Looking for comp bio " + degree_type + " requirements")
 
         self.s.push()
@@ -100,24 +107,13 @@ class NewCompBio():
         self.__my_print("\n--- Valid Course Assignment ---")
         all_used_courses = []
         
-        for req in active_reqs:
-            if req == "humanities-limit":
-                continue
-            
+        for req in active_reqs:           
             # Gather all courses used for this bucket
             used_courses = [c for c in self.courses if is_true(m.evaluate(self.assignment_vars[c][req]))]
             all_used_courses.extend(used_courses)
 
             #just print everything as a standard list
             self.__my_print(f"{req}: {used_courses}")
-
-        # --- Humanities Printing ---
-        humanities_list = self.reader.get_humanities_courses()
-        humanities_included_in_degree = [course for course in all_used_courses if course in humanities_list]
-        
-        # Use a set to remove duplicates (in case a humanity was used in multiple buckets)
-        unique_humanities = list(set(humanities_included_in_degree))
-        self.__my_print(f"humanities courses used in degree: {unique_humanities}")
 
     def __my_print(self, *args, **kwargs):
         if self.printing:
@@ -310,12 +306,7 @@ class NewCompBio():
         final_pas_constraint = Sum(*([0] + total_pas_conditions)) == 1
         return final_pas_constraint # type: ignore
     
-    def __newDiscreteConstraint(self, degree_type: str) -> BoolRef:
-        if degree_type == "AB": #this isn't a req for ABs
-            for course in self.courses:
-                self.s.add(Not(self.assignment_vars[course]["discrete"]))
-            return BoolVal(True)
-        
+    def __newDiscreteConstraint(self, degree_type: str) -> BoolRef:       
         discrete_allowed = {"CSCI 0220"}
 
         total_discrete_conditions = []
@@ -349,15 +340,49 @@ class NewCompBio():
             #get the z3 variable for that course
             bio_core_var = self.assignment_vars[course]["bio-core"]
 
-            if course in genetics_allowed or course in cellchem_allowed or course.startswith("Unknown"):
+            if course in genetics_allowed:
+                genetics_conditions.append(If(bio_core_var, 1, 0))
                 total_bio_core_conditions.append(If(bio_core_var, 1, 0))
 
-                #add a condition to count the requirement if allowed
-                if course in genetics_allowed or course.startswith("Unknown"):
-                    genetics_conditions.append(If(bio_core_var, 1, 0))
-                
-                if course in cellchem_allowed or course.startswith("Unknown"):
-                    cellchem_conditions.append(If(bio_core_var, 1, 0))
+            elif course in cellchem_allowed:
+                cellchem_conditions.append(If(bio_core_var, 1, 0))
+                total_bio_core_conditions.append(If(bio_core_var, 1, 0))
+
+            elif course.startswith("Unknown"):
+                # need to track which group unknown is being used for in order to use unknowns for both groups
+                unknown_is_genetics = Bool(f"{course}_is_genetics")
+                unknown_is_cellchem = Bool(f"{course}_is_cellchem")
+
+                # if the course is used, it must satisfy exactly one category
+                self.s.add(
+                    Implies(
+                        bio_core_var,
+                        Xor(unknown_is_genetics, unknown_is_cellchem)
+                    )
+                )
+
+                # if unused, neither category applies
+                self.s.add(
+                    Implies(
+                        Not(bio_core_var),
+                        And(
+                            Not(unknown_is_genetics),
+                            Not(unknown_is_cellchem)
+                        )
+                    )
+                )
+
+                genetics_conditions.append(
+                    If(And(bio_core_var, unknown_is_genetics), 1, 0)
+                )
+
+                cellchem_conditions.append(
+                    If(And(bio_core_var, unknown_is_cellchem), 1, 0)
+                )
+
+                total_bio_core_conditions.append(
+                    If(bio_core_var, 1, 0)
+                )
 
             else:
                 #and disallow the assignment for this requirement if not.
@@ -410,15 +435,11 @@ class NewCompBio():
         final_comp_bio_core_constraint = Sum(*([0] + total_comp_bio_core_conditions)) == 2
         return final_comp_bio_core_constraint # type: ignore
     
-
-    
     def __newElectiveConstraint(self, degree_type: str) -> BoolRef:
-        if degree_type == "SCB": #this isn't a req for SCBs
-            for course in self.courses:
-                self.s.add(Not(self.assignment_vars[course]["elective"]))
-            return BoolVal(True)
-        
         elective_courses: list[str] = self.reader.get_new_comp_bio_electives()
+        # this also allows ANY other "1000+ level Computation Biology-related course" with approval
+        # we cannot even attempt to model this fully so we will just include the list that they
+        # provide
 
         total_elective_conditions = []
 
@@ -440,11 +461,6 @@ class NewCompBio():
     
 
     def __newTrackConstraint(self, degree_type: str) -> BoolRef:
-        if degree_type == "AB": #this isn't a req for SCBs
-            for course in self.courses:
-                self.s.add(Not(self.assignment_vars[course]["track"]))
-            return BoolVal(True)
-        
         valid_elective_courses = set()
         all_slot_sums = []
         category_active_vars = []
@@ -554,10 +570,6 @@ class NewCompBio():
 
     
     def __newCapstoneConstraint(self, degree_type: str) -> BoolRef:
-        #get the list of capstones
-        cs_capstone_courses: list[str] = self.reader.get_capstone_courses()
-        #there are only CS capstones...
-
         valid_capstones = []
 
         #for each course...
@@ -598,11 +610,10 @@ class NewCompBio():
         
         #for each course...
         for course in self.courses:
-            #  humanities requirements can overlap with anything, so take them out of the restricted pool
-            restricted_reqs = [req for req in active_reqs if (req != "capstone" and req != "humanities-limit")]
+            #  capstone is its own course, so nothing can overlap
             
-            # get the booleans for all remaining restricted requirements
-            restricted_bools = [self.assignment_vars[course][req] for req in restricted_reqs]
+            # get the booleans for all requirements
+            restricted_bools = [self.assignment_vars[course][req] for req in active_reqs]
             
             # count how many restricted buckets (requirement sets) this course is placed into
             restricted_count = Sum(*[If(b, 1, 0) for b in restricted_bools])

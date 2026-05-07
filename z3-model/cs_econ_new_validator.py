@@ -411,8 +411,27 @@ class NewCSEcon():
                 total_micro_conditions.append(If(mmm_var, 1, 0))
                 total_mmm_conditions.append(If(mmm_var, 1, 0))
             elif course.startswith("Unknown"):
-                total_macro_metrics_conditions.append(If(mmm_var, 1, 0))
-                total_micro_conditions.append(If(mmm_var, 1, 0))
+                # we need to track micro and macro separately here so that we can use 3 unknowns for this
+                unknown_is_micro = Bool(f"{course}_is_micro")
+                unknown_is_macro = Bool(f"{course}_is_macro")
+
+                # if used, it must be assigned to exactly one category
+                self.s.add(Implies(mmm_var,
+                                Xor(unknown_is_micro, unknown_is_macro)))
+
+                # if not used, neither category applies
+                self.s.add(Implies(Not(mmm_var),
+                                And(Not(unknown_is_micro),
+                                    Not(unknown_is_macro))))
+
+                total_micro_conditions.append(
+                    If(And(mmm_var, unknown_is_micro), 1, 0)
+                )
+
+                total_macro_metrics_conditions.append(
+                    If(And(mmm_var, unknown_is_macro), 1, 0)
+                )
+
                 total_mmm_conditions.append(If(mmm_var, 1, 0))
             else:
                 #and disallow the assignment for this requirement if not.
@@ -500,11 +519,6 @@ class NewCSEcon():
         return final_math_econ_constraint # type: ignore
     
     def __newEconElectiveConstraint(self, degree_type: str) -> BoolRef:
-        if degree_type == "AB": #this isn't a req for ABs
-            for course in self.courses:
-                self.s.add(Not(self.assignment_vars[course]["econ-elective"]))
-            return BoolVal(True)
-        
         econ_elect_disallowed = {"ECON 1620", "ECON 1960", "ECON 1970(1)", "ECON 1970(2)"}
         total_econ_elect_conditions = []
         low_level_econ_conditions = []
@@ -523,7 +537,7 @@ class NewCSEcon():
                 course.startswith("Unknown")):
                 total_econ_elect_conditions.append(If(econ_elect_var, 1, 0))
 
-                if (course_num < 1100):
+                if (course_num < 1100) and not course.startswith("Unknown"):
                     low_level_econ_conditions.append(If(econ_elect_var, 1, 0))
             else:
                 #and disallow the assignment for this requirement if not.

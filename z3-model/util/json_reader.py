@@ -169,7 +169,7 @@ class JSONReader:
         """Get list of Comp Bio AB elective courses."""
         return self.get("new_comp_bio_electives") or []
     
-    def get_new_comp_bio_tracks(self) -> List[str]:
+    def get_new_comp_bio_tracks(self) -> List[Dict]:
         """Get list of Comp Bio SCB track courses."""
         return self.get("new_comp_bio_tracks") or []
     

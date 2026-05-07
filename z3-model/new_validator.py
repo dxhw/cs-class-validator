@@ -454,8 +454,8 @@ class NewCS():
                 if course in additional_systems_courses:
                     systems_conditions.append(If(elective_var, 1, 0))
 
-                # If it's specifically a CS/lin alg course, track it in the non-CS pool too
-                if not(course.startswith("CSCI") and course not in linear_alg_courses):
+                # If it's outside of CS but not lin alg, track it in the non-CS pool too
+                if not(course.startswith("CSCI")) and course not in linear_alg_courses and not course.startswith("Unknown"):
                     non_cs_conditions.append(If(elective_var, 1, 0))
 
             else:

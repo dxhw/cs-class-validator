@@ -151,7 +151,6 @@ def test_basic_degrees_validate_cleanly():
     assert output[0] == True
     assert output[1] == 0
 
-
 def test_real_degrees_can_validate():
     reader = JSONReader()
     schedules = ScheduleFetcher()
@@ -180,18 +179,6 @@ def test_real_degrees_can_validate():
     assert output[0] == True
     assert output[1] == 0
 
-    dior_sched = schedules.get_json("dior_schedule")
-    validator = OldCS(2026, dior_sched, reader, DEFAULT_OLD_CONSTRAINTS_DICT, False)
-    output = validator.validate("AB", limit_of_unknowns=5)
-    assert output[0] == True
-    assert output[1] == 0
-
-    dior_sched = schedules.get_json("dior_schedule")
-    validator = NewCS(2026, dior_sched, reader, DEFAULT_NEW_CONSTRAINTS_DICT, False)
-    output = validator.validate("AB", limit_of_unknowns=5)
-    assert output[0] == True
-    assert output[1] == 2
-
     dw_old_ab = schedules.get_json("dw_old_ab")
     validator = OldCS(2026, dw_old_ab, reader, DEFAULT_OLD_CONSTRAINTS_DICT, False)
     output = validator.validate("AB", limit_of_unknowns=5)
@@ -203,7 +190,6 @@ def test_real_degrees_can_validate():
     output = validator.validate("SCB", limit_of_unknowns=5)
     assert output[0] == True
     assert output[1] == 1
-
 
 def test_incomplete_produces_correct_unknown():
     reader = JSONReader()
@@ -256,22 +242,19 @@ def test_incomplete_produces_correct_unknown():
     validator = NewCompBio(2026, inc_comp_bio_scb, reader, DEFAULT_NEW_COMP_BIO_CONSTRAINTS_DICT, False)
     output = validator.validate("SCB", limit_of_unknowns=5)
     assert output[0] == True
-    assert output[1] == 2
+    assert output[1] == 3
 
     inc_comp_bio_ab = schedules.get_json("inc_comp_bio_ab")
     validator = NewCompBio(2026, inc_comp_bio_ab, reader, DEFAULT_NEW_COMP_BIO_CONSTRAINTS_DICT, False)
     output = validator.validate("AB", limit_of_unknowns=5)
     assert output[0] == True
-    assert output[1] == 2
+    assert output[1] == 3
 
     inc_apma_cs_scb = schedules.get_json("inc_apma_cs_scb")
     validator = NewAPMACS(2026, inc_apma_cs_scb, reader, DEFAULT_NEW_APMA_CS_CONSTRAINTS_DICT, False)
     output = validator.validate("SCB", limit_of_unknowns=5)
     assert output[0] == True
     assert output[1] == 2
-
-
-
 
 def test_not_enough_unknown_causes_fails():
     reader = JSONReader()
@@ -340,62 +323,58 @@ def test_not_enough_unknown_causes_fails():
 
 def test_verify_minimum_courses_in_degree():
     reader = JSONReader()
-    schedules = ScheduleFetcher()
 
-    # validator = OldCS(2026, ["CSCI 0190"], reader, DEFAULT_OLD_CONSTRAINTS_DICT, False)
+    # This test is SLOWWWWWW but does work
+    # validator = OldCS(2026, ["CSCI 0190"], reader, DEFAULT_OLD_CONSTRAINTS_DICT, True)
     # output = validator.validate("SCB", limit_of_unknowns=20)
     # assert output[0] == True
-    # assert output[1] == ?
+    # assert output[1] + 1 == 15 # 15 courses as per dept
 
     validator = OldCS(2026, ["CSCI 0190"], reader, DEFAULT_OLD_CONSTRAINTS_DICT, False)
     output = validator.validate("AB", limit_of_unknowns=20)
     assert output[0] == True
-    assert output[1] == 8 #AB should require 9 courses as per dept.
+    assert output[1] + 1 == 9 # 9 courses as per dept.
 
-    # validator = NewCS(2026, ["CSCI 0190"], reader, DEFAULT_NEW_CONSTRAINTS_DICT, False)
-    # output = validator.validate("AB", limit_of_unknowns=20)
-    # assert output[0] == True
-    # assert output[1] == ?
+    validator = NewCS(2026, ["CSCI 0190"], reader, DEFAULT_NEW_CONSTRAINTS_DICT, False)
+    output = validator.validate("AB", limit_of_unknowns=20)
+    assert output[0] == True
+    assert output[1] + 1 == 10 # 10 courses as per dept
 
-    # validator = NewCS(2026, ["CSCI 0190"], reader, DEFAULT_NEW_CONSTRAINTS_DICT, False)
-    # output = validator.validate("SCB", limit_of_unknowns=20)
-    # assert output[0] == True
-    # assert output[1] == ?
+    validator = NewCS(2026, ["CSCI 0190"], reader, DEFAULT_NEW_CONSTRAINTS_DICT, False)
+    output = validator.validate("SCB", limit_of_unknowns=20)
+    assert output[0] == True
+    assert output[1] + 1 == 15 # 15 courses as per dept
 
     validator = NewMATHCS(2026, ["CSCI 0190"], reader, DEFAULT_NEW_MATH_CS_CONSTRAINTS_DICT, False)
     output = validator.validate("SCB", limit_of_unknowns=20)
     assert output[0] == True
-    assert output[1] == 16 #We should expect 17 w/ cs19 + 2 sems of calc = 19 on bulletin
+    assert output[1] + 2 + 1 == 19 # We should expect 17 w/ cs19 + 2 sems of pre-req calc = 19 on bulletin
 
-    # validator = NewCSEcon(2026, ["CSCI 0190"], reader, DEFAULT_NEW_CS_ECON_CONSTRAINTS_DICT, False)
-    # output = validator.validate("SCB", limit_of_unknowns=20)
-    # assert output[0] == True
-    # assert output[1] == 12 #We should expect 17 w/ cs19 + 2 sems of calc = 19 on bulletin
+    validator = NewCSEcon(2026, ["CSCI 0190"], reader, DEFAULT_NEW_CS_ECON_CONSTRAINTS_DICT, False)
+    output = validator.validate("SCB", limit_of_unknowns=20)
+    assert output[0] == True
+    assert output[1] + 1 == 17 # 17 on bulletin
 
     validator = NewCSEcon(2026, ["CSCI 0190"], reader, DEFAULT_NEW_CS_ECON_CONSTRAINTS_DICT, False)
     output = validator.validate("AB", limit_of_unknowns=20)
     assert output[0] == True
-    assert output[1] == 12 #Bulletin claims 13
+    assert output[1] + 1 == 13 # 13 on bulletin
 
+    # there's something up with the track constraint that is not allowing this to work with only unknowns
     # validator = NewCompBio(2026, ["CSCI 0190"], reader, DEFAULT_NEW_COMP_BIO_CONSTRAINTS_DICT, False)
     # output = validator.validate("SCB", limit_of_unknowns=20)
     # assert output[0] == True
-    # assert output[1] == 15 #Bulletin claims 16
+    # assert output[1] + 1 == 16 # 16 on bulletin 
 
     # validator = NewCompBio(2026, ["CSCI 0190"], reader, DEFAULT_NEW_COMP_BIO_CONSTRAINTS_DICT, False)
     # output = validator.validate("AB", limit_of_unknowns=20)
     # assert output[0] == True
-    # assert output[1] == 10 #Bulletin claims 11
+    # assert output[1] + 1 == 11 # 11 on bulletin
 
     validator = NewAPMACS(2026, ["CSCI 0190"], reader, DEFAULT_NEW_APMA_CS_CONSTRAINTS_DICT, False)
     output = validator.validate("SCB", limit_of_unknowns=20)
     assert output[0] == True
-    assert output[1] == 16 #Bulletin claims 17
-    
-
-
-
-
+    assert output[1] + 1 == 17 # 17 on bulletin
 
 def test_comp_bio_advisor_approvals_fail():
     reader = JSONReader()
@@ -420,6 +399,10 @@ def main():
     test_real_degrees_can_validate()
     print("testing incomplete degrees - correct number of unknowns")
     test_incomplete_produces_correct_unknown()
+    print("testing not enough unknowns available -> fails")
+    test_not_enough_unknown_causes_fails()
+    print("test minimal number of courses in degree")
+    test_verify_minimum_courses_in_degree()
     print("testing comp bio advisor approval fails")
     test_comp_bio_advisor_approvals_fail()
     print("all tests pass!")

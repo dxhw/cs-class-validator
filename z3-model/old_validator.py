@@ -724,7 +724,8 @@ class OldCS():
                     total_assigned_conditions.append(If(var, 1, 0))
                     
                     # If it's specifically an upper-level course, track it in the upper-level pool too
-                    if is_upper_level:
+                    # this constraint is the reason we can't do SCBs with only unknowns it gets REALLY slow
+                    if is_upper_level or course.startswith("Unknown"): 
                         upper_level_conditions.append(If(var, 1, 0))
                 else:
                     # Otherwise, ban it
