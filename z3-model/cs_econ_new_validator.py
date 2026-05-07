@@ -29,13 +29,14 @@ from z3 import *
 
 
 class NewCSEcon():
-    def  __init__(self, year: int, courses: list[str], reader: JSONReader, constraint_dict: dict[str, bool]):
+    def  __init__(self, year: int, courses: list[str], reader: JSONReader, constraint_dict: dict[str, bool], printing: bool=True):
         #set up our class
         self.s = Solver()
         self.constraint_dict = constraint_dict
         self.year = year 
         self.courses = courses
         self.reader = reader
+        self.printing = printing
 
 
     def validate_sat(self, degree_type: str, unknowns: int = 0, limit_of_unknowns: int = 5) -> CheckSatResult:
@@ -52,7 +53,7 @@ class NewCSEcon():
         #Only degree types are AB/SCB
         assert degree_type == "SCB" or degree_type == "AB"
 
-        print("Looking for CS+Econ " + degree_type + " requirements")
+        self.__my_print("Looking for CS+Econ " + degree_type + " requirements")
 
         self.s.push()
 
@@ -86,12 +87,12 @@ class NewCSEcon():
                 self.__print_results()
             #are there unknowns involved? also print alternatives. 
             else:
-                print(f"Found a valid course plan with {unknowns} unknown courses")
+                self.__my_print(f"Found a valid course plan with {unknowns} unknown courses")
                 self.__generate_unknown_alternatives()
 
             self.s.pop()
         else:
-            print(f"cannot form a valid {degree_type} degree")
+            self.__my_print(f"cannot form a valid {degree_type} degree")
             self.s.pop()
             is_sat = self.__try_with_unknowns(degree_type, unknowns, limit_of_unknowns)
 
@@ -100,12 +101,12 @@ class NewCSEcon():
         # this function assumes the constraints are SAT!
     def __print_results(self):
 
-        # print("IM BROKEN FIX ME")
+        # self.__my_print("IM BROKEN FIX ME")
         # return
 
         active_reqs = [req for req, is_active in self.constraint_dict.items() if is_active]
         m = self.s.model()
-        print("\n--- Valid Course Assignment ---")
+        self.__my_print("\n--- Valid Course Assignment ---")
         all_used_courses = []
         
         for req in active_reqs:
@@ -117,7 +118,7 @@ class NewCSEcon():
             all_used_courses.extend(used_courses)
 
             #just print everything as a standard list
-            print(f"{req}: {used_courses}")
+            self.__my_print(f"{req}: {used_courses}")
 
         # --- Humanities Printing ---
         humanities_list = self.reader.get_humanities_courses()
@@ -125,25 +126,29 @@ class NewCSEcon():
         
         # Use a set to remove duplicates (in case a humanity was used in multiple buckets)
         unique_humanities = list(set(humanities_included_in_degree))
-        print(f"humanities courses used in degree: {unique_humanities}")
+        self.__my_print(f"humanities courses used in degree: {unique_humanities}")
+
+    def __my_print(self, *args, **kwargs):
+        if self.printing:
+            print(*args, **kwargs)
     
     ################################### UNKNOWN HANDLING #######################################
     
     def __try_with_unknowns(self, degree_type: str, num_unknowns: int, limit_of_unknowns: int = 6):
         if num_unknowns > limit_of_unknowns - 1:
-            print("Too many unknowns to build a degree!")
+            self.__my_print("Too many unknowns to build a degree!")
             return (False, num_unknowns)
         
         count = num_unknowns + 1
         self.courses.append(f"Unknown {count}")
-        print(f"trying with {count} inserted unknown class(es)")
+        self.__my_print(f"trying with {count} inserted unknown class(es)")
         is_sat = self.validate(degree_type, num_unknowns + 1, limit_of_unknowns)
 
         return is_sat
         
 
     def __generate_unknown_alternatives(self, limit: int = 5):
-        print("\nSearching for Unknown course placements...")
+        self.__my_print("\nSearching for Unknown course placements...")
         
         # Get active requirements
         active_reqs = [req for req, is_active in self.constraint_dict.items() if is_active]
@@ -155,7 +160,7 @@ class NewCSEcon():
         while self.s.check() == sat and count < limit:
             m = self.s.model()
             count += 1
-            print(f"\n--- Alternative {count} ---")
+            self.__my_print(f"\n--- Alternative {count} ---")
             
             unknowns_used = False
             
@@ -181,7 +186,7 @@ class NewCSEcon():
                 # For printing purposes, we only care if the count is > 0
                 if actual_count.as_long() > 0:
                     unknowns_used = True
-                    print(f"- {actual_count} Unknown(s) filling requirement: {req}")
+                    self.__my_print(f"- {actual_count} Unknown(s) filling requirement: {req}")
 
             self.__print_results()
 
@@ -190,15 +195,15 @@ class NewCSEcon():
                 # Tell Z3: "You cannot use this EXACT distribution of Unknowns again."
                 self.s.add(Not(And(*current_distribution_equations)))
             else:
-                print("- No Unknowns were needed to graduate! The real transcript is sufficient.")
+                self.__my_print("- No Unknowns were needed to graduate! The real transcript is sufficient.")
                 break # Stop searching if they can graduate without help
                 
         if self.s.check() != sat:
-            print("out of possible placements")
+            self.__my_print("out of possible placements")
         else:
-            print(f"hit unknown placement limit")
-        print(f"{count} alternative placements found")
-        print("done!")
+            self.__my_print(f"hit unknown placement limit")
+        self.__my_print(f"{count} alternative placements found")
+        self.__my_print("done!")
     
     ############################# CONSTRAINTS ########################################
     

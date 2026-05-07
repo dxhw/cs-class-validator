@@ -5,7 +5,7 @@ from util.util import get_course_number
 from z3 import *
 
 class OldCS():
-    def  __init__(self, year: int, courses: list[str], reader: JSONReader, constraint_dict: dict[str, bool]):
+    def  __init__(self, year: int, courses: list[str], reader: JSONReader, constraint_dict: dict[str, bool], printing: bool=True):
         # pull in the degree JSONS
 
         # We are using an optimizer rather than a solver here so that we can get unknowns to prefer
@@ -15,6 +15,7 @@ class OldCS():
         self.year = year # if you are above class of 2027, these requirements are not available
         self.courses = courses
         self.reader = reader
+        self.printing = printing
         
         # c/o 2026 has no capstones
         if self.year == 2026:
@@ -33,11 +34,11 @@ class OldCS():
         #Only degree types are AB/SCB
         assert degree_type == "SCB" or degree_type == "AB"
 
-        print("Looking for old " + degree_type + " requirements")
+        self.__my_print("Looking for old " + degree_type + " requirements")
 
         # Old requirements are only allowed for c/o 2027 and earlier
         if self.year > 2027:
-            print("These requirements are only available to students in classes 2024-2027, so this student is not eligible for them")
+            self.__my_print("These requirements are only available to students in classes 2024-2027, so this student is not eligible for them")
             return (False, 0)
         
         # capstones are not required for ABs
@@ -107,12 +108,12 @@ class OldCS():
                 self.__print_results()
             #are there unknowns involved? also print alternatives. 
             else:
-                print(f"Found a valid course plan with {unknowns} unknown courses")
+                self.__my_print(f"Found a valid course plan with {unknowns} unknown courses")
                 self.__generate_unknown_alternatives()
 
             self.s.pop()
         else:
-            print(f"cannot form a valid {degree_type} degree")
+            self.__my_print(f"cannot form a valid {degree_type} degree")
             self.s.pop()
             is_sat = self.__try_with_unknowns(degree_type, unknowns, limit_of_unknowns)
 
@@ -122,7 +123,7 @@ class OldCS():
     def __print_results(self):
         active_reqs = [req for req, is_active in self.constraint_dict.items() if is_active]
         m = self.s.model()
-        print("\n--- Valid Course Assignment ---")
+        self.__my_print("\n--- Valid Course Assignment ---")
         all_used_courses = []
         
         for req in active_reqs:
@@ -135,11 +136,11 @@ class OldCS():
             
             # Print everything EXCEPT pathways as a standard list
             if req != "pathways":
-                print(f"{req}: {used_courses}")
+                self.__my_print(f"{req}: {used_courses}")
 
         # --- Structured Pathways Printing ---
         if "pathways" in active_reqs:
-            print("pathways:")
+            self.__my_print("pathways:")
             pathway_requirements = self.reader.get_pathways()
             
             for pathway in pathway_requirements:
@@ -149,7 +150,7 @@ class OldCS():
                 is_active = is_true(m.evaluate(Bool(f"pathway_{p_name}_active")))
                 
                 if is_active:
-                    print(f"  - {p_name}:")
+                    self.__my_print(f"  - {p_name}:")
                     
                     # Find the exactly 2 courses assigned to THIS pathway
                     assigned_courses = []
@@ -171,8 +172,8 @@ class OldCS():
                     if core_course == "None" and len(additional_courses) == 2:
                         core_course = additional_courses[1]
                     
-                    print(f"      Core: {core_course}")
-                    print(f"      Additional: {additional_course}")
+                    self.__my_print(f"      Core: {core_course}")
+                    self.__my_print(f"      Additional: {additional_course}")
                     
                     # Find which transcript courses Z3 used for the intermediate prerequisites
                     intermediates_used = []
@@ -194,7 +195,7 @@ class OldCS():
                                 intermediates_used.append(c)
                                 break
                                 
-                    print(f"      Intermediates fulfilling prerequisites: {intermediates_used}")
+                    self.__my_print(f"      Intermediates fulfilling prerequisites: {intermediates_used}")
 
         # --- Humanities Printing ---
         humanities_list = self.reader.get_humanities_courses()
@@ -202,7 +203,11 @@ class OldCS():
         
         # Use a set to remove duplicates (in case a humanity was used in multiple buckets)
         unique_humanities = list(set(humanities_included_in_degree))
-        print(f"humanities courses used in degree: {unique_humanities}")
+        self.__my_print(f"humanities courses used in degree: {unique_humanities}")
+
+    def __my_print(self, *args, **kwargs):
+        if self.printing:
+            print(*args, **kwargs)
         
     ################################### UNKNOWN HANDLING #######################################
 
@@ -245,19 +250,19 @@ class OldCS():
 
     def __try_with_unknowns(self, degree_type: str, num_unknowns: int, limit_of_unknowns: int = 6):
         if num_unknowns > limit_of_unknowns - 1:
-            print("Too many unknowns to build a degree!")
+            self.__my_print("Too many unknowns to build a degree!")
             return (False, num_unknowns)
         
         count = num_unknowns + 1
         self.courses.append(f"Unknown {count}")
-        print(f"trying with {count} inserted unknown class(es)")
+        self.__my_print(f"trying with {count} inserted unknown class(es)")
         is_sat = self.validate(degree_type, num_unknowns + 1, limit_of_unknowns)
-        print(is_sat)
+        self.__my_print(is_sat)
 
         return is_sat
 
     def __generate_unknown_alternatives(self, limit: int = 5):
-        print("\nSearching for Unknown course placements...")
+        self.__my_print("\nSearching for Unknown course placements...")
         
         # Get active requirements
         active_reqs = [req for req, is_active in self.constraint_dict.items() if is_active]
@@ -270,7 +275,7 @@ class OldCS():
         while self.s.check() == sat and count < limit:
             m = self.s.model()
             count += 1
-            print(f"\n--- Alternative {count} ---")
+            self.__my_print(f"\n--- Alternative {count} ---")
             
             unknowns_used = False
             
@@ -298,7 +303,7 @@ class OldCS():
                 # For printing purposes, we only care if the count is > 0
                 if actual_count.as_long() > 0:
                     unknowns_used = True
-                    print(f"- {actual_count} Unknown(s) filling requirement: {req}")
+                    self.__my_print(f"- {actual_count} Unknown(s) filling requirement: {req}")
 
             # 2. Check the specific Pathway sub-matrix
             if "pathways" in active_reqs:
@@ -316,7 +321,7 @@ class OldCS():
                     current_distribution_equations.append(sum_expr == actual_count)
                     
                     if actual_count.as_long() > 0:
-                        print(f"  -> {actual_count} Unknown(s) specifically in the '{p_name}' pathway")
+                        self.__my_print(f"  -> {actual_count} Unknown(s) specifically in the '{p_name}' pathway")
 
                     intermediates_statically_met = True
                     for req in pathway["Intermediate Courses"]:
@@ -341,7 +346,7 @@ class OldCS():
                             current_distribution_equations.append(sum_expr_int == actual_count_int)
                             
                             if actual_count_int.as_long() > 0:
-                                print(f"  -> {actual_count_int} Unknown(s) specifically in '{p_name}' intermediate prereq {idx+1}")
+                                self.__my_print(f"  -> {actual_count_int} Unknown(s) specifically in '{p_name}' intermediate prereq {idx+1}")
                 
             self.__print_results()
 
@@ -350,15 +355,15 @@ class OldCS():
                 # Tell Z3: "You cannot use this EXACT distribution of Unknowns again."
                 self.s.add(Not(And(*current_distribution_equations)))
             else:
-                print("- No Unknowns were needed to graduate! The real transcript is sufficient.")
+                self.__my_print("- No Unknowns were needed to graduate! The real transcript is sufficient.")
                 break # Stop searching if they can graduate without help
                 
         if self.s.check() != sat:
-            print("out of possible placements")
+            self.__my_print("out of possible placements")
         else:
-            print(f"hit unknown placement limit")
-        print(f"{count} alternative placements found")
-        print("done!")
+            self.__my_print(f"hit unknown placement limit")
+        self.__my_print(f"{count} alternative placements found")
+        self.__my_print("done!")
 
     ############################# CONSTRAINTS ########################################
     
