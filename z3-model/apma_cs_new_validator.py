@@ -28,6 +28,7 @@ class NewAPMACS():
         self.reader = reader
         self.printing = printing
         self.capstone_incomplete = capstone_incomplete
+        self.results_dict = {}
 
     def validate_sat(self, degree_type: str, unknowns: int = 0, limit_of_unknowns: int = 5) -> CheckSatResult:
         if self.validate(degree_type, unknowns, limit_of_unknowns)[0]:
@@ -38,8 +39,10 @@ class NewAPMACS():
     def validate_unknowns(self, degree_type: str, unknowns: int = 0, limit_of_unknowns: int = 5) -> int:
         return self.validate(degree_type, unknowns, limit_of_unknowns)[1]
 
-
     def validate(self, degree_type: str, unknowns: int = 0, limit_of_unknowns: int = 5) -> tuple[bool, int]:
+        return self.validate_with_results(degree_type, unknowns, limit_of_unknowns)[0]
+
+    def validate_with_results(self, degree_type: str, unknowns: int = 0, limit_of_unknowns: int = 5) -> tuple[tuple[bool, int], dict]:
         #Only degree types are SCB
         assert degree_type == "SCB"
         self.__my_print("new APMA+CS " + degree_type)
@@ -71,6 +74,8 @@ class NewAPMACS():
         
         # Print the actual course assignments if satisfied
         if is_sat[0]:
+            if self.results_dict == {}:
+                self.__fill_results_dict()
             if unknowns == 0:
                 self.__print_results()
             #are there unknowns involved? also print alternatives. 
@@ -84,7 +89,7 @@ class NewAPMACS():
             self.s.pop()
             is_sat = self.__try_with_unknowns(degree_type, unknowns, limit_of_unknowns)
 
-        return is_sat
+        return is_sat, self.results_dict
     
         # this function assumes the constraints are SAT!
     def __print_results(self):
@@ -101,6 +106,22 @@ class NewAPMACS():
 
             #just print everything as a standard list
             self.__my_print(f"{req}: {used_courses}")
+
+    def __fill_results_dict(self):
+        active_reqs = [req for req, is_active in self.constraint_dict.items() if is_active]
+        m = self.s.model()
+        all_used_courses = []
+        
+        for req in active_reqs:
+            if req == "humanities-limit":
+                continue
+            
+            # Gather all courses used for this bucket
+            used_courses = [c for c in self.courses if is_true(m.evaluate(self.assignment_vars[c][req]))]
+            all_used_courses.extend(used_courses)
+
+            # Assign the standard list to the dictionary
+            self.results_dict[req] = used_courses
 
     def __my_print(self, *args, **kwargs):
         if self.printing:

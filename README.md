@@ -22,6 +22,8 @@ For some concentrations, we have used a Z3 optimizer, rather than just a solver.
 
 ## How does this run?
 
+### Command Line
+
 All of our code for this project is in the `z3-model` folder. We use the cs1710 environment with Python 3.10 to run our code. Any earlier python version will fail to run.
 
 Our code runs in `validator.py`. We have a CLI for running our code with arguments. These are:
@@ -40,6 +42,23 @@ If it is a real schedule, place it in the real_degrees folder and any name will 
 Our test file runs using pytest. Executing `pytest testing.py` in the `z3-model` folder will run our tests.
 The test file can also be run as a simple python file, with assert statements used for testing, if pytest is disagreeable to you. 
 
+### Web Interface
+Alternatively, you may access our model via a webapp interface. Our API is in `server.py` and our client code can be found in
+the `client` folder.
+
+To initialize the webapp, you will need to run both the client and the server separately.
+To run the client:
+- Navigate to the `client` folder
+- `npm install`
+- `npm start`
+
+To run the server:
+- Install dependencies. Our server uses `fastapi` and `uvicorn` so you may need to install those (they are not in the CS1710 environment)
+- Navigate to the `z3-model` folder
+- `python3 server.py`
+
+Then, navigate to http://localhost:3000/ to begin playing with the webapp.
+
 ## What did we learn?
 
 We found that the CS-related degrees at Brown are, broadly, highly complex and frequently non-descriptive as to what, exactly, counts for each degree. This is also worsened by the joint degrees, which each have a significant number of special cases that must be accounted for and, frequently, more limited options overall. While many requirements are written so that they might be more flexible for students, this flexibility often ends up being conditional in a way that can be confusing and suggest potential double-counting or course overlaps where there are none. This is worse for students wishing to take advantage of the Open Curriculum and broaden their horizons beyond their concentration, as these students will have a more limited set of course slots for their degree and will need to plan much more to ensure they can graduate. Even merely being able to check what courses might fit into different degrees or slots automatically is incredibly useful for verifying that someone is on the right track to graduate. Despite the numerous limitations of the model listed above, we find this to be an extremely useful tool for Brown CS students.   
@@ -48,4 +67,9 @@ We found that the CS-related degrees at Brown are, broadly, highly complex and f
 
 We did not collaborate with anyone for this assignment. 
 
-We used the current version of Google Gemini provided by Brown to ideate about how to best model certain degree requirements and produce the majority of the code seen in `old_validator.py`. This usage helped inform the early direction of our project and how we modelled other constraints for the other concentrations. Gemini was also used to write the basic functionality of `json_reader.py`. No other model was used for any other part of this project. 
+We used the current version of Google Gemini provided by Brown to ideate about how to best model certain degree requirements and produce the majority of the code seen in `old_validator.py`. This usage helped inform the early direction of our project and how we modelled other constraints for the other concentrations. Gemini was also used to write the basic functionality of `json_reader.py`. 
+
+The webapp (both the React app and the FastAPI server) are almost entirely AI generated with Google Gemini Pro and Claude Haiku 4.5 respectively. While this is an interface that we imagine many users will be more happy with, we do not view it as the primary mode of engagement with our model and make no claims
+about its accuracy.
+
+No other model was used for any other part of this project. 

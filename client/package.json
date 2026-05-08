@@ -1,0 +1,38 @@
+{
+  "name": "cs-concentration-validator",
+  "type": "module",
+  "version": "1.0.0",
+  "description": "Brown Computer Science Concentration Validator",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.30.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.25",
+    "@types/react": "^18.0.9",
+    "@types/react-dom": "^18.0.4",
+    "@vitejs/plugin-react": "^4.1.0",
+    "eslint": "^8.15.0",
+    "typescript": "^4.6.4",
+    "vite": "^6.2.2",
+    "vitest": "^3.0.9",
+    "web-vitals": "^2.1.4"
+  },
+  "scripts": {
+    "start": "vite",
+    "build": "vite build",
+    "serve": "vite preview",
+    "backend": "cd ../z3-model && python3 server.py"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ],
+    "rules": {
+      "testing-library/no-dom-import": "off"
+    }
+  }
+}

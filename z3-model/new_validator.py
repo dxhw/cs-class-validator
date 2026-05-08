@@ -15,6 +15,7 @@ class NewCS():
         self.reader = reader
         self.printing = printing
         self.capstone_incomplete = capstone_incomplete
+        self.results_dict = {}
 
 
     def validate_sat(self, degree_type: str, unknowns: int = 0, limit_of_unknowns: int = 5) -> CheckSatResult:
@@ -25,9 +26,11 @@ class NewCS():
     
     def validate_unknowns(self, degree_type: str, unknowns: int = 0, limit_of_unknowns: int = 5) -> int:
         return self.validate(degree_type, unknowns, limit_of_unknowns)[1]
-
-
+    
     def validate(self, degree_type: str, unknowns: int = 0, limit_of_unknowns: int = 5) -> tuple[bool, int]:
+        return self.validate_with_results(degree_type, unknowns, limit_of_unknowns)[0]
+
+    def validate_with_results(self, degree_type: str, unknowns: int = 0, limit_of_unknowns: int = 5) -> tuple[tuple[bool, int], dict]:
         #Only degree types are AB/SCB
         assert degree_type == "SCB" or degree_type == "AB"
 
@@ -60,6 +63,8 @@ class NewCS():
         
         # Print the actual course assignments if satisfied
         if is_sat[0]:
+            if self.results_dict == {}:
+                self.__fill_results_dict()
             if unknowns == 0:
                 self.__print_results()
             #are there unknowns involved? also print alternatives. 
@@ -73,7 +78,7 @@ class NewCS():
             self.s.pop()
             is_sat = self.__try_with_unknowns(degree_type, unknowns, limit_of_unknowns)
 
-        return is_sat
+        return is_sat, self.results_dict
     
         # this function assumes the constraints are SAT!
     def __print_results(self):
@@ -116,6 +121,44 @@ class NewCS():
     def __my_print(self, *args, **kwargs):
         if self.printing:
             print(*args, **kwargs)
+
+    def __fill_results_dict(self):
+        active_reqs = [req for req, is_active in self.constraint_dict.items() if is_active]
+        m = self.s.model()
+        all_used_courses = []
+        
+        for req in active_reqs:
+            if req == "humanities-limit":
+                continue
+            
+            # Gather all courses used for this bucket
+            used_courses = [c for c in self.courses if is_true(m.evaluate(self.assignment_vars[c][req]))]
+            all_used_courses.extend(used_courses)
+            
+            # Populate dictionary EXCEPT for foundations
+            if req != "foundations":
+                self.results_dict[req] = used_courses
+            elif req == "foundations":
+                self.results_dict["foundations"] = {}
+                foundations_requirements = self.reader.get_new_foundations()
+                unknowns_used_for_foundations = [c for c in used_courses if c.startswith("Unknown")]
+                
+                for foundations_category in foundations_requirements:
+                    # the 0 index is kind of gross, but is because we have used standard formatting for our JSONs
+                    course_used_for_category = [c for c in used_courses if c in foundations_category["Courses"][0]]
+                    if not course_used_for_category: # need to use an unknown
+                        course_used_for_category = [unknowns_used_for_foundations.pop()]
+                        
+                    # Map the foundation category name to the chosen course
+                    self.results_dict["foundations"][foundations_category['Category']] = course_used_for_category[0]
+
+        # --- Humanities Dictionary ---
+        humanities_list = self.reader.get_humanities_courses()
+        humanities_included_in_degree = [course for course in all_used_courses if course in humanities_list]
+        
+        # Use a set to remove duplicates (in case a humanity was used in multiple buckets)
+        unique_humanities = list(set(humanities_included_in_degree))
+        self.results_dict["humanities courses used in degree"] = unique_humanities
     
     ################################### UNKNOWN HANDLING #######################################
     
