@@ -6,7 +6,7 @@ from copy import deepcopy
 from z3 import *
 
 class OldCS():
-    def  __init__(self, year: int, courses: list[str], reader: JSONReader, constraint_dict: dict[str, bool], printing: bool=True):
+    def  __init__(self, year: int, courses: list[str], reader: JSONReader, constraint_dict: dict[str, bool], capstone_incomplete: bool=False, printing: bool=True):
         # pull in the degree JSONS
 
         # We are using an optimizer rather than a solver here so that we can get unknowns to prefer
@@ -17,6 +17,7 @@ class OldCS():
         self.courses = courses
         self.reader = reader
         self.printing = printing
+        self.capstone_incomplete = capstone_incomplete
         
         # c/o 2026 has no capstones
         if self.year == 2026:
@@ -34,6 +35,10 @@ class OldCS():
     def validate(self, degree_type: str, unknowns: int = 0, limit_of_unknowns: int = 5) -> tuple[bool, int]:
         #Only degree types are AB/SCB
         assert degree_type == "SCB" or degree_type == "AB"
+
+        # no capstones for AB
+        if degree_type == "AB":
+            self.constraint_dict["capstone"] = False
 
         self.__my_print("Looking for old " + degree_type + " requirements")
 
@@ -748,14 +753,15 @@ class OldCS():
             return final_constraint # type: ignore
 
     def __capstoneConstraint(self, degree_type: str) -> BoolRef:
-            # Handle AB Degree
-            if degree_type == "AB":
-                # Force all capstone assignment variables to False so Z3 doesn't waste 
-                # the student's courses on a requirement they don't have.
+            if self.capstone_incomplete:
+                # the student has told us that they have NOT completed their capstone
+                # (perhaps they are not a senior)
+                # override all courses to not be valid for capstone except for unknowns
                 for course in self.courses:
-                    self.s.add(Not(self.assignment_vars[course]["capstone"]))
-                return BoolVal(True)
-
+                    if not course.startswith("Unknown"):
+                        self.s.add(Not(self.assignment_vars[course]["capstone"]))
+                # we continue with the rest of the constraint as normal for the unknown tracking
+            
             capstone_courses: list[str] = self.reader.get_capstone_courses()
             pathway_requirements = self.reader.get_pathways()
 

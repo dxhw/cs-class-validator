@@ -26,9 +26,12 @@ Our code runs in `validator.py`. We have a CLI for running our code with argumen
  - `--degree_type {SCB,AB}`:  your degree type (AB/SCB), default is SCB
  - `--degree {CS,CompBio,CS+ECON,MATH+CS,APMA+CS}`: the degree you're getting
  - `--requirement_version {Old,New,Either}`: The version of requirements that you are using (Old/New), default is New
- - `--courses COURSE_JSON_FILE`: the JSON file with the courses you'd like to evaluate
+ - `--courses COURSE_JSON_FILE`: the JSON file with the courses you'd like to evaluate (file name without .json)
+ - `--capstone_incomplete`:   an override flag to mark the capstone as incomplete, even if there is a course that could go in that spot (useful for non-seniors)
 
 We recommend adding a test schedule JSON to the `test_schedules` folder to test out a degree plan for yourself!
+If it is a test schedule, place it in the top level folder and name it something with the prefix `test_`.
+If it is a real schedule, place it in the real_degrees folder and any name will do.
 
 Our test file runs using pytest. Executing `pytest testing.py` in the `z3-model` folder will run our tests.
 
@@ -40,4 +43,4 @@ We found that the CS-related degrees at Brown are, broadly, highly complex and f
 
 We did not collaborate with anyone for this assignment. 
 
-We used the current version of Google Gemini provided by Brown to ideate about how to best model certain degree requirements and produce the majority of the code seen in `old_validator.py`. This usage helped inform the early direction of our project and how we modelled other constraints for the other concentrations. No other model was used for any other part of this project. 
+We used the current version of Google Gemini provided by Brown to ideate about how to best model certain degree requirements and produce the majority of the code seen in `old_validator.py`. This usage helped inform the early direction of our project and how we modelled other constraints for the other concentrations. Gemini was also used to write the basic functionality of `json_reader.py`. No other model was used for any other part of this project. 

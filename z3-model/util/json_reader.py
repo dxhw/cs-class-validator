@@ -153,6 +153,10 @@ class JSONReader:
         """Get new apma-cs foundations course requirements."""
         return self.get("new_apma_cs_foundations") or []
     
+    def get_new_math_cs_foundations(self) -> List[Dict]:
+        """Get new math-cs foundations course requirements."""
+        return self.get("new_math_cs_foundations") or []
+    
     def get_humanities_courses(self) -> List[str]:
         """Get list of humanities courses."""
         return self.get("humanities") or []

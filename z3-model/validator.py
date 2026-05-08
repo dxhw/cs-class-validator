@@ -126,6 +126,7 @@ def parse_args():
     parser.add_argument("--degree", dest="degree", help="the degree you're getting", choices=["CS", "CompBio", "CS+ECON", "MATH+CS", "APMA+CS"], default="CS")
     parser.add_argument('--requirement_version', dest="requirement_version", help="The version of requirements that you are using (Old/New), default is New", choices=["Old", "New", "Either"], default="New")
     parser.add_argument('--courses', dest="course_json_file", help="the JSON file with the courses you'd like to evaluate", default='dhw_old_scb', type=str)
+    parser.add_argument('--capstone_incomplete', dest="capstone_incomplete", help="override to mark the capstone as incomplete, even if there is a course that could go in that spot", action="store_true")
 
     return parser.parse_args()
 
@@ -146,27 +147,27 @@ def main():
     match args.degree:
         case "CS":
             if args.requirement_version == "Old" or args.requirement_version == "Either":
-                old_solver = OldCS(args.year, courses, reader, DEFAULT_OLD_CONSTRAINTS_DICT)
+                old_solver = OldCS(args.year, courses, reader, DEFAULT_OLD_CONSTRAINTS_DICT, args.capstone_incomplete)
             if args.requirement_version == "New" or args.requirement_version == "Either":
-                new_solver = NewCS(args.year, courses, reader, DEFAULT_NEW_CONSTRAINTS_DICT)
+                new_solver = NewCS(args.year, courses, reader, DEFAULT_NEW_CONSTRAINTS_DICT, args.capstone_incomplete)
         case "CompBio":
             if args.requirement_version == "New" or args.requirement_version == "Either":
-                new_solver = NewCompBio(args.year, courses, reader, DEFAULT_NEW_COMP_BIO_CONSTRAINTS_DICT)
+                new_solver = NewCompBio(args.year, courses, reader, DEFAULT_NEW_COMP_BIO_CONSTRAINTS_DICT, args.capstone_incomplete)
             if args.requirement_version == "Old" or args.requirement_version == "Either":
                 raise(NotImplementedError("CompBio old requirements not implemented yet"))
         case "CS+ECON":
             if args.requirement_version == "New" or args.requirement_version == "Either":
-                new_solver = NewCSEcon(args.year, courses, reader, DEFAULT_NEW_CS_ECON_CONSTRAINTS_DICT)
+                new_solver = NewCSEcon(args.year, courses, reader, DEFAULT_NEW_CS_ECON_CONSTRAINTS_DICT, args.capstone_incomplete)
             if args.requirement_version == "Old" or args.requirement_version == "Either":
                 raise(NotImplementedError("CS+ECON old requirements not implemented yet"))
         case "MATH+CS":
             if args.requirement_version == "New" or args.requirement_version == "Either":
-                new_solver = NewMATHCS(args.year, courses, reader, DEFAULT_NEW_MATH_CS_CONSTRAINTS_DICT)
+                new_solver = NewMATHCS(args.year, courses, reader, DEFAULT_NEW_MATH_CS_CONSTRAINTS_DICT, args.capstone_incomplete)
             if args.requirement_version == "Old" or args.requirement_version == "Either":
                 raise(NotImplementedError("Math+CS old requirements not implemented yet"))
         case "APMA+CS":
             if args.requirement_version == "New" or args.requirement_version == "Either":
-                new_solver = NewAPMACS(args.year, courses, reader, DEFAULT_NEW_APMA_CS_CONSTRAINTS_DICT)
+                new_solver = NewAPMACS(args.year, courses, reader, DEFAULT_NEW_APMA_CS_CONSTRAINTS_DICT, args.capstone_incomplete)
             if args.requirement_version == "Old" or args.requirement_version == "Either":
                 raise(NotImplementedError("APMA+CS old requirements not implemented yet"))
         case _:

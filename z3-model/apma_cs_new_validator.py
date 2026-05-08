@@ -19,7 +19,7 @@ from z3 import *
 	# NO OVERLAP
 
 class NewAPMACS():
-    def  __init__(self, year: int, courses: list[str], reader: JSONReader, constraint_dict: dict[str, bool], printing: bool=True):
+    def  __init__(self, year: int, courses: list[str], reader: JSONReader, constraint_dict: dict[str, bool], capstone_incomplete: bool=False, printing: bool=True):
         #set up our class
         self.s = Solver()
         self.constraint_dict = deepcopy(constraint_dict)
@@ -27,6 +27,7 @@ class NewAPMACS():
         self.courses = courses
         self.reader = reader
         self.printing = printing
+        self.capstone_incomplete = capstone_incomplete
 
     def validate_sat(self, degree_type: str, unknowns: int = 0, limit_of_unknowns: int = 5) -> CheckSatResult:
         if self.validate(degree_type, unknowns, limit_of_unknowns)[0]:
@@ -590,6 +591,15 @@ class NewAPMACS():
 
     
     def __newCapstoneConstraint(self, degree_type: str) -> BoolRef:
+        if self.capstone_incomplete:
+            # the student has told us that they have NOT completed their capstone
+            # (perhaps they are not a senior)
+            # override all courses to not be valid for capstone except for unknowns
+            for course in self.courses:
+                if not course.startswith("Unknown"):
+                    self.s.add(Not(self.assignment_vars[course]["capstone"]))
+            # we continue with the rest of the constraint as normal for the unknown tracking
+
         #get the list of capstones
         cs_capstone_courses: list[str] = self.reader.get_capstone_courses()
         apma_capstone_courses = {"APMA 1360", "APMA 1971"}

@@ -17,14 +17,15 @@ from z3 import *
 #capstone
 
 class NewMATHCS():
-    def  __init__(self, year: int, courses: list[str], reader: JSONReader, constraint_dict: dict[str, bool], printing: bool=True):
+    def  __init__(self, year: int, courses: list[str], reader: JSONReader, constraint_dict: dict[str, bool], capstone_incomplete: bool=False, printing: bool=True):
         #set up our class
-        self.s = Solver()
+        self.s = Optimize()
         self.constraint_dict = deepcopy(constraint_dict)
         self.year = year 
         self.courses = courses
         self.reader = reader
         self.printing = printing
+        self.capstone_incomplete = capstone_incomplete
 
     def validate_sat(self, degree_type: str, unknowns: int = 0, limit_of_unknowns: int = 5) -> CheckSatResult:
         if self.validate(degree_type, unknowns, limit_of_unknowns)[0]:
@@ -64,6 +65,35 @@ class NewMATHCS():
 
         # no double dipping (except capstone)
         self.__doubleDippingConstraint()
+
+        # Optimization so that we prioritize using real classes to fill pathways
+        real_courses = [c for c in self.courses if not c.startswith("Unknown")]
+        optimization_scores = []
+        
+        for c in real_courses:
+            for req in active_reqs:               
+                # Weight more limited constrainst more heavily
+                # we don't need to include abstract because we have FORCED it to take MATH 1530 if present
+                # we also don't need to include linear since it is not usable anywhere else
+
+                # foundations is the most restrictive constraint by far, we don't want to lose
+                # any foundations courses to another category
+                if req == "foundations":
+                    weight = 200
+                elif req in ["technical", "upper-math"]:
+                    weight = 50
+                # Give electives a lower weight so they become the dump-stat for Unknowns
+                elif req in ["additional", "intro"]:
+                    weight = 1
+                else:
+                    weight = 1
+                    
+                # If a real course is used for this requirement, it adds the weight to the score
+                optimization_scores.append(If(self.assignment_vars[c][req], weight, 0))
+
+        if optimization_scores:
+            # Tell Z3 to maximize the total weight across the course plan
+            self.s.maximize(Sum(*([0] + optimization_scores)))
 
         is_sat = (self.s.check() == sat, unknowns)
         
@@ -311,7 +341,7 @@ class NewMATHCS():
 
     def __newFoundationsConstraint(self, degree_type: str) -> BoolRef:
         #Get the groups of foundations courses
-        foundations_requirements = self.reader.get_new_apma_cs_foundations()
+        foundations_requirements = self.reader.get_new_math_cs_foundations()
 
         valid_foundations_courses = set()
         all_slot_sums = []
@@ -409,6 +439,18 @@ class NewMATHCS():
     
     def __newAbstractConstraint(self, degree_type: str) -> BoolRef:
         abstract_allowed = {"MATH 1530"}
+
+        ## Add in an override that if MATH 1530 is in the degree it MUST be used for this
+        # because this can only be satisfied with this course, we don't want this to ever go
+        # to some other bucket if it is available
+        if "MATH 1530" in self.courses:
+            require_abstract_constraint = self.assignment_vars["MATH 1530"]["abstract"] == True
+            for course in self.courses:
+                if course != "MATH 1530":
+                    self.s.add(Not(self.assignment_vars[course]["abstract"]))
+            return require_abstract_constraint
+        
+        # otherwise, we are just handling an unknown as abstract
 
         total_abstract_conditions = []
 
@@ -513,8 +555,13 @@ class NewMATHCS():
             #get the z3 variable for that course
             elective_var = self.assignment_vars[course]["elective"]
 
+            
             #add a condition to count the requirement if allowed
-            if (course.startswith("MATH") or course.startswith("APMA") or course.startswith("CSCI")) or course.startswith("Unknown"):
+            # it seems like at least CS cares that the course has a code 1000+
+            # they also think that math/apma would think the same
+            # this is not confirmed, but we will restrict this
+            course_num = get_course_number(course)
+            if ((course.startswith("MATH") or course.startswith("APMA") or course.startswith("CSCI")) and course_num >= 1000) or course.startswith("Unknown"):
                 total_elective_conditions.append(If(elective_var, 1, 0))
                 if course in restricted_group:
                     restricted_group_conditions.append(If(elective_var, 1, 0))
@@ -531,6 +578,15 @@ class NewMATHCS():
 
     
     def __newCapstoneConstraint(self, degree_type: str) -> BoolRef:
+        if self.capstone_incomplete:
+            # the student has told us that they have NOT completed their capstone
+            # (perhaps they are not a senior)
+            # override all courses to not be valid for capstone except for unknowns
+            for course in self.courses:
+                if not course.startswith("Unknown"):
+                    self.s.add(Not(self.assignment_vars[course]["capstone"]))
+            # we continue with the rest of the constraint as normal for the unknown tracking
+
         #get the list of capstones
         cs_capstone_courses: list[str] = self.reader.get_capstone_courses()
         #there are only CS capstones...
