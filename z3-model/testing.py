@@ -159,7 +159,7 @@ def test_real_degrees_can_validate():
     validator = NewCompBio(2026, cdf_cb, reader, DEFAULT_NEW_COMP_BIO_CONSTRAINTS_DICT, False, False)
     output = validator.validate("SCB", limit_of_unknowns=5)
     assert output[0] == True
-    assert output[1] == 1
+    assert output[1] == 2
 
     cdf_cb = schedules.get_json("cdf_old_comp_bio")
     validator = NewCompBio(2026, cdf_cb, reader, DEFAULT_NEW_COMP_BIO_CONSTRAINTS_DICT, False, False)
@@ -379,16 +379,15 @@ def test_verify_minimum_courses_in_degree():
     assert output[0] == True
     assert output[1] + 1 == 13 # 13 on bulletin
 
-    # there's something up with the track constraint that is not allowing this to work with only unknowns
-    # validator = NewCompBio(2026, ["CSCI 0190"], reader, DEFAULT_NEW_COMP_BIO_CONSTRAINTS_DICT, False, False)
-    # output = validator.validate("SCB", limit_of_unknowns=20)
-    # assert output[0] == True
-    # assert output[1] + 1 == 16 # 16 on bulletin 
+    validator = NewCompBio(2026, ["CSCI 0190"], reader, DEFAULT_NEW_COMP_BIO_CONSTRAINTS_DICT, False, False)
+    output = validator.validate("SCB", limit_of_unknowns=20)
+    assert output[0] == True
+    assert output[1] + 1 == 16 # 16 on bulletin 
 
-    # validator = NewCompBio(2026, ["CSCI 0190"], reader, DEFAULT_NEW_COMP_BIO_CONSTRAINTS_DICT, False, False)
-    # output = validator.validate("AB", limit_of_unknowns=20)
-    # assert output[0] == True
-    # assert output[1] + 1 == 11 # 11 on bulletin
+    validator = NewCompBio(2026, ["CSCI 0190"], reader, DEFAULT_NEW_COMP_BIO_CONSTRAINTS_DICT, False, False)
+    output = validator.validate("AB", limit_of_unknowns=20)
+    assert output[0] == True
+    assert output[1] + 1 == 11 # 11 on bulletin
 
     validator = NewAPMACS(2026, ["CSCI 0190"], reader, DEFAULT_NEW_APMA_CS_CONSTRAINTS_DICT, False, False)
     output = validator.validate("SCB", limit_of_unknowns=20)

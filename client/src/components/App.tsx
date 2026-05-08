@@ -127,7 +127,7 @@ export default function App() {
       .split(/[;,\n]+/)
       .map((course) => {
         // 1. Trim whitespace and capitalize
-        let cleaned = course.trim().toUpperCase();
+        let cleaned = course.trim().replaceAll("\"", "").toUpperCase();
 
         // 2. Use Regex to capture 3-4 letters, ignore existing spaces, and capture the numbers/letters that follow
         // ^([A-Z]{3,4}) : Captures exactly 3 or 4 uppercase letters at the start
