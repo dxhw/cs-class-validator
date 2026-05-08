@@ -18,6 +18,7 @@ class OldCS():
         self.reader = reader
         self.printing = printing
         self.capstone_incomplete = capstone_incomplete
+        self.results_dict = {}
         
         # c/o 2026 has no capstones
         if self.year == 2026:
@@ -31,8 +32,11 @@ class OldCS():
     
     def validate_unknowns(self, degree_type: str, unknowns: int = 0, limit_of_unknowns: int = 5) -> int:
         return self.validate(degree_type, unknowns, limit_of_unknowns)[1]
-
+    
     def validate(self, degree_type: str, unknowns: int = 0, limit_of_unknowns: int = 5) -> tuple[bool, int]:
+        return self.validate_with_results(degree_type, unknowns, limit_of_unknowns)[0]
+
+    def validate_with_results(self, degree_type: str, unknowns: int = 0, limit_of_unknowns: int = 5) -> tuple[tuple[bool, int], dict]:
         #Only degree types are AB/SCB
         assert degree_type == "SCB" or degree_type == "AB"
 
@@ -45,7 +49,7 @@ class OldCS():
         # Old requirements are only allowed for c/o 2027 and earlier
         if self.year > 2027:
             self.__my_print("These requirements are only available to students in classes 2024-2027, so this student is not eligible for them")
-            return (False, 0)
+            return (False, 0), {}
         
         # capstones are not required for ABs
         if degree_type == "AB":
@@ -110,6 +114,8 @@ class OldCS():
         
         # Print the actual course assignments if satisfied
         if is_sat[0]:
+            if self.results_dict == {}:
+                self.__fill_results_dict()
             if unknowns == 0:
                 self.__print_results()
             #are there unknowns involved? also print alternatives. 
@@ -123,7 +129,7 @@ class OldCS():
             self.s.pop()
             is_sat = self.__try_with_unknowns(degree_type, unknowns, limit_of_unknowns)
 
-        return is_sat
+        return is_sat, self.results_dict
     
     # this function assumes the constraints are SAT!
     def __print_results(self):
@@ -214,6 +220,89 @@ class OldCS():
     def __my_print(self, *args, **kwargs):
         if self.printing:
             print(*args, **kwargs)
+
+    def __fill_results_dict(self):
+        active_reqs = [req for req, is_active in self.constraint_dict.items() if is_active]
+        m = self.s.model()
+        all_used_courses = []
+        
+        for req in active_reqs:
+            if req == "humanities-limit":
+                continue
+            
+            # Gather all courses used for this bucket
+            used_courses = [c for c in self.courses if is_true(m.evaluate(self.assignment_vars[c][req]))]
+            all_used_courses.extend(used_courses)
+            
+            # Populate dictionary EXCEPT for pathways
+            if req != "pathways":
+                self.results_dict[req] = used_courses
+
+        # --- Structured Pathways Dictionary ---
+        if "pathways" in active_reqs:
+            self.results_dict["pathways"] = {}
+            pathway_requirements = self.reader.get_pathways()
+            
+            for pathway in pathway_requirements:
+                p_name = pathway["Pathway"]
+                
+                # Check if this specific pathway was activated by Z3
+                is_active = is_true(m.evaluate(Bool(f"pathway_{p_name}_active")))
+                
+                if is_active:
+                    # Find the exactly 2 courses assigned to THIS pathway
+                    assigned_courses = []
+                    for c in self.courses:
+                        if is_true(m.evaluate(Bool(f"use_{c}_for_pathway_{p_name}"))):
+                            assigned_courses.append(c)
+                            
+                    # Separate into Core and Additional
+                    core_set = set(pathway["Core Courses"])
+                    cores_used = [c for c in assigned_courses if c in core_set]
+                    
+                    # The first core course satisfies the "Core" slot
+                    core_course = cores_used[0] if cores_used else "None"
+                    
+                    # The remaining course (which could be a 2nd core, grad, or related) is the additional
+                    additional_courses = [c for c in assigned_courses if c != core_course]
+                    additional_course = additional_courses[0] if additional_courses else "None"
+
+                    if core_course == "None" and len(additional_courses) == 2:
+                        core_course = additional_courses[1]
+                    
+                    # Find which transcript courses Z3 used for the intermediate prerequisites
+                    intermediates_used = []
+                    for idx, req_group in enumerate(pathway["Intermediate Courses"]):
+                        for c in self.courses:
+
+                            # if the course plan included the course already, we did it statically
+                            if c in req_group:
+                                intermediates_used.append(c)
+                                break
+                            
+                            # The course was an unknown
+                            var_intermed = Bool(f"use_{c}_for_pathway_{p_name}_intermed_{idx}")
+                            
+                            # Ask the model if this course was chosen
+                            if is_true(m.evaluate(var_intermed)):
+                                intermediates_used.append(c)
+                                break
+                                
+                    # Fill the dictionary for this specific pathway
+                    self.results_dict["pathways"][p_name] = {
+                        "Core": core_course,
+                        "Additional": additional_course,
+                        "Intermediates": intermediates_used
+                    }
+
+        # --- Humanities Dictionary ---
+        humanities_list = self.reader.get_humanities_courses()
+        humanities_included_in_degree = [course for course in all_used_courses if course in humanities_list]
+        
+        # Use a set to remove duplicates (in case a humanity was used in multiple buckets)
+        unique_humanities = list(set(humanities_included_in_degree))
+        self.results_dict["humanities courses used in degree"] = unique_humanities
+
         
     ################################### UNKNOWN HANDLING #######################################
 

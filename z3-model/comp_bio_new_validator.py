@@ -34,6 +34,7 @@ class NewCompBio():
         self.reader = reader
         self.printing = printing
         self.capstone_incomplete = capstone_incomplete
+        self.results_dict = {}
 
     def validate_sat(self, degree_type: str, unknowns: int = 0, limit_of_unknowns: int = 5) -> CheckSatResult:
         if self.validate(degree_type, unknowns, limit_of_unknowns)[0]:
@@ -44,8 +45,10 @@ class NewCompBio():
     def validate_unknowns(self, degree_type: str, unknowns: int = 0, limit_of_unknowns: int = 5) -> int:
         return self.validate(degree_type, unknowns, limit_of_unknowns)[1]
 
-
     def validate(self, degree_type: str, unknowns: int = 0, limit_of_unknowns: int = 5) -> tuple[bool, int]:
+        return self.validate_with_results(degree_type, unknowns, limit_of_unknowns)[0]
+
+    def validate_with_results(self, degree_type: str, unknowns: int = 0, limit_of_unknowns: int = 5) -> tuple[tuple[bool, int], dict]:
         #Only degree types are AB/SCB
         assert degree_type == "SCB" or degree_type == "AB"
 
@@ -85,6 +88,8 @@ class NewCompBio():
         
         # Print the actual course assignments if satisfied
         if is_sat[0]:
+            if self.results_dict == {}:
+                self.__fill_results_dict()
             if unknowns == 0:
                 self.__print_results()
             #are there unknowns involved? also print alternatives. 
@@ -98,7 +103,7 @@ class NewCompBio():
             self.s.pop()
             is_sat = self.__try_with_unknowns(degree_type, unknowns, limit_of_unknowns)
 
-        return is_sat
+        return is_sat, self.results_dict
     
         # this function assumes the constraints are SAT!
     def __print_results(self):
@@ -115,6 +120,22 @@ class NewCompBio():
 
             #just print everything as a standard list
             self.__my_print(f"{req}: {used_courses}")
+
+    def __fill_results_dict(self):
+        active_reqs = [req for req, is_active in self.constraint_dict.items() if is_active]
+        m = self.s.model()
+        all_used_courses = []
+        
+        for req in active_reqs:
+            if req == "humanities-limit":
+                continue
+            
+            # Gather all courses used for this bucket
+            used_courses = [c for c in self.courses if is_true(m.evaluate(self.assignment_vars[c][req]))]
+            all_used_courses.extend(used_courses)
+
+            # Assign the standard list to the dictionary
+            self.results_dict[req] = used_courses
 
     def __my_print(self, *args, **kwargs):
         if self.printing:
@@ -462,54 +483,54 @@ class NewCompBio():
     
 
     def __newTrackConstraint(self, degree_type: str) -> BoolRef:
-        valid_elective_courses = set()
-        all_slot_sums = []
-        category_active_vars = []
-        
         track_requirements = self.reader.get_new_comp_bio_tracks()
+        
+        category_active_vars = []
+        valid_elective_courses = set()
 
         for category_data in track_requirements:
             t_name = category_data["Track"] 
             course_groups = category_data["Courses"] 
             cat_slot_sums = []
+            
+            # Dictionary to prevent a single course from filling multiple slots
+            track_course_usage = {c: [] for c in self.courses}
 
-            for group in course_groups:                
-                slot_vars = []
+            for idx, group in enumerate(course_groups):                
+                slot_conditions = []
                 for course in self.courses:
-                    var = self.assignment_vars[course]["track"]
+                    # Specific sub-variable for THIS exact slot
+                    var_slot = Bool(f"use_{course}_for_track_{t_name}_slot_{idx}")
+                    track_course_usage[course].append(var_slot)
                     
-                    if course.startswith("Unknown"):
-                        slot_vars.append(If(var, 1, 0))
-                        
-                    elif course in group:
+                    if course in group or course.startswith("Unknown"):
                         valid_elective_courses.add(course)
-                        slot_vars.append(If(var, 1, 0))
+                        slot_conditions.append(If(var_slot, 1, 0))
+                        
+                        # Link this sub-variable back to the global track bucket
+                        main_var = self.assignment_vars[course]["track"]
+                        self.s.add(Implies(var_slot, main_var))
+                    else:
+                        self.s.add(Not(var_slot))
 
-                if slot_vars:
-                    slot_sum = Sum(*slot_vars)
-                    # if (category_data["Track"] == "Biology"):
-                    #     self.s.add(slot_sum == 2)
-                    # else:
-                    #     self.s.add(slot_sum == 3)
-                    cat_slot_sums.append(slot_sum)
-                    all_slot_sums.append(slot_sum)
+                slot_sum = Sum(*([0] + slot_conditions))
+                cat_slot_sums.append(slot_sum)
 
-            # the biol track takes virtually any bio-related 1000+ course, 
-            # so we need to treat that as a separate "slot" for the track
-            if (category_data["Track"] == "Biology"):
-                slot_vars = []
-
+            # Biology special custom rule
+            if t_name == "Biology":
+                slot_conditions = []
+                idx = len(course_groups) # put it past the furthest index in the actual tracks json
+                
                 for course in self.courses:
-                    var = self.assignment_vars[course]["track"]
+                    var_slot = Bool(f"use_{course}_for_track_{t_name}_slot_{idx}")
+                    track_course_usage[course].append(var_slot)
 
                     course_num = get_course_number(course)
 
-                    #add a condition to count the requirement if allowed
-
+                    is_valid_bio = False
                     if course.startswith("Unknown"):
-                        slot_vars.append(If(var, 1, 0))
-
-                    if (course_num >= 1000 and 
+                        is_valid_bio = True
+                    elif (course_num >= 1000 and 
                          (course.startswith("BIOL") or 
                           course.startswith("EEPS") or 
                           course.startswith("NEUR") or 
@@ -519,55 +540,60 @@ class NewCompBio():
                           course.startswith("CPSY") or 
                           course.startswith("CLPS")) and
                           course not in course_groups[0]):
+                        is_valid_bio = True
+
+                    if is_valid_bio:
                         valid_elective_courses.add(course)
-                        slot_vars.append(If(var, 1, 0))
+                        slot_conditions.append(If(var_slot, 1, 0))
+                        
+                        main_var = self.assignment_vars[course]["track"]
+                        self.s.add(Implies(var_slot, main_var))
+                    else:
+                        self.s.add(Not(var_slot))
 
-                if slot_vars:
-                    slot_sum = Sum(*slot_vars)
-                    # self.s.add(slot_sum == 4) #we need 4 of these courses
-                    cat_slot_sums.append(slot_sum)
-                    all_slot_sums.append(slot_sum)
+                slot_sum = Sum(*([0] + slot_conditions))
+                cat_slot_sums.append(slot_sum)
 
-            
-            # 2. Track if this specific Category (branch) is active
-            if cat_slot_sums:
-                # self.__my_print(cat_slot_sums)
+            # Anti-overlap rule for this specific track
+            # A course can ONLY be in at most 1 slot for this track
+            for course in self.courses:
+                if track_course_usage[course]:
+                    self.s.add(Sum(*[If(v, 1, 0) for v in track_course_usage[course]]) <= 1)
 
+            # Evaluate if this track's specific math is met
+            if len(cat_slot_sums) > 1:
+                if t_name == "Computer Science" or t_name == "Applied Math":
+                    valid_cat_logic = And(cat_slot_sums[0] == 3, cat_slot_sums[1] == 3)
+                elif t_name == "Biology":
+                    valid_cat_logic = And(cat_slot_sums[0] == 2, cat_slot_sums[1] == 4)
+                else:
+                    valid_cat_logic = BoolVal(False)
+            else:
                 valid_cat_logic = BoolVal(False)
 
-                # self.__my_print(len(cat_slot_sums))
-                if len(cat_slot_sums) > 1:
-                    match t_name:
-                        case "Computer Science":
-                            valid_cat_logic = And(cat_slot_sums[0] == 3, cat_slot_sums[1] == 3)
-                        case "Applied Math":
-                            valid_cat_logic = And(cat_slot_sums[0] == 3, cat_slot_sums[1] == 3)
-                        case "Biology":
-                            valid_cat_logic = And(cat_slot_sums[0] == 2, cat_slot_sums[1] == 4)
+            # Link the branch validity to a single Track boolean
+            t_active = Bool(f"track_{t_name}_is_active")
+            self.s.add(t_active == valid_cat_logic)
+            category_active_vars.append(If(t_active, 1, 0))
+            
+            # Clean up inactive tracks
+            # If Z3 decides NOT to use this track, we force all its sub-variables to False
+            # so they don't accidentally leak into the global sum!
+            self.s.add(Implies(Not(t_active), Sum(*cat_slot_sums) == 0))
 
-                # self.__my_print(valid_cat_logic)
-
-
-
-                cat_total = Sum(*cat_slot_sums)
-                # If they fulfilled both slots in this category, the branch counts as 1
-                category_active_vars.append(If(valid_cat_logic, 1, 0))
-
-        # 3. Exclude invalid courses
+        # Exclude invalid courses globally
         for course in self.courses:
             if course not in valid_elective_courses and not course.startswith("Unknown"):
                 var = self.assignment_vars[course]["track"]
                 self.s.add(Not(var))
 
-        # 4. Calculate global totals
-        # Adding [0] ensures we don't crash if the lists are completely empty
-        total_electives = Sum(*([0] + all_slot_sums))
+        # We must select EXACTLY 1 active track
         total_branches = Sum(*([0] + category_active_vars))
-
-        # 6 intermediates covering 1 track
-        final_constraint = total_branches == 1
+        
+        # We must have EXACTLY 6 total track courses globally
+        six_total_courses = Sum(*([0] + [If(self.assignment_vars[course]["track"], 1, 0) for course in self.courses])) == 6
             
-        return final_constraint # type: ignore
+        return And(total_branches == 1, six_total_courses) # type: ignore
 
     
     def __newCapstoneConstraint(self, degree_type: str) -> BoolRef:

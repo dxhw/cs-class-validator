@@ -55,7 +55,7 @@ class ScheduleFetcher():
         except FileNotFoundError as e:
             raise ValueError(f"Could not find file {file_path.name}") from None
 
-    def __fix_1970_courses(self, courses: list[str]) -> list[str]:
+    def fix_1970_courses(self, courses: list[str]) -> list[str]:
         # A dictionary to track the counts of 1970 courses per department prefix
         prefix_counts = {}
 
@@ -106,4 +106,4 @@ class ScheduleFetcher():
         else:
             file_path = self.schedule_dir / intermediate_folder / f"{file_name}.json"
         loaded_json: list[str] = self.__load_json_file(file_path)
-        return self.__fix_1970_courses(loaded_json)
+        return self.fix_1970_courses(loaded_json)
