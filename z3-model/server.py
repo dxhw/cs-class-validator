@@ -380,7 +380,6 @@ def validate_degree(request: ValidateRequest) -> ValidateResponse:
                         request.capstone_incomplete,
                         printing=False
                     )
-                    print(old_constraints)
                 
                 if new_constraints is not None:
                     new_solver = NewCS(
