@@ -352,7 +352,6 @@ class OldCS():
         self.courses.append(f"Unknown {count}")
         self.__my_print(f"trying with {count} inserted unknown class(es)")
         is_sat = self.validate(degree_type, num_unknowns + 1, limit_of_unknowns)
-        self.__my_print(is_sat)
 
         return is_sat
 
@@ -846,9 +845,18 @@ class OldCS():
                 # the student has told us that they have NOT completed their capstone
                 # (perhaps they are not a senior)
                 # override all courses to not be valid for capstone except for unknowns
+                unknown_vars = []
                 for course in self.courses:
                     if not course.startswith("Unknown"):
                         self.s.add(Not(self.assignment_vars[course]["capstone"]))
+                    else:
+                        unknown_var = self.assignment_vars[course]["capstone"]
+                        unknown_vars.append(If(unknown_var, 1, 0))
+                # There's a bug if we continue through the constraint normally, so we'll just
+                # set it up to work properly from here
+                return Sum(*([0] + unknown_vars)) == 1 # type: ignore
+
+                        
                 # we continue with the rest of the constraint as normal for the unknown tracking
             
             capstone_courses: list[str] = self.reader.get_capstone_courses()
