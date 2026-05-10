@@ -135,6 +135,10 @@ origins = [
     "http://localhost:3000",  # Common for React
 ]
 
+# Global variables to store current solvers for alternative generation
+current_old_solver: Any = None
+current_new_solver: Any = None
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,            # List of allowed origins
@@ -306,12 +310,60 @@ def _get_constraints_for_degree(degree: str, requirement_version: str, custom_co
             new_constraints = DEFAULT_CONSTRAINTS["APMA+CS"]["New"].copy()
             if custom_constraints and custom_constraints[0]:
                 new_constraints.update(custom_constraints[0])
-    
+
     return old_constraints, new_constraints
+
+@app.post("/generate-alternative")
+def generate_alternative(solver: str = Query(..., regex="^(old|new)$")) -> Dict[str, Any]:
+    """
+    Generate the next alternative unknown placement for the selected solver.
+    Must be called after /validate endpoint has been called.
+
+    Returns:
+        success: bool - whether a new alternative was generated
+        results_dict: the solver's updated results_dict
+    """
+    global current_old_solver, current_new_solver
+
+    if solver == "old":
+        if current_old_solver is None:
+            raise HTTPException(
+                status_code=400,
+                detail="No active old solver available. Please call /validate first."
+            )
+        try:
+            success = current_old_solver.generate_alternative()
+            return {
+                "success": success,
+                "results_dict": current_old_solver.results_dict,
+            }
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to generate alternative for old solver: {str(e)}")
+
+    if solver == "new":
+        if current_new_solver is None:
+            raise HTTPException(
+                status_code=400,
+                detail="No active new solver available. Please call /validate first."
+            )
+        try:
+            success = current_new_solver.generate_alternative()
+            return {
+                "success": success,
+                "results_dict": current_new_solver.results_dict,
+            }
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to generate alternative for new solver: {str(e)}")
+
+    raise HTTPException(status_code=400, detail="Invalid solver specified. Use 'old' or 'new'.")
 
 
 @app.post("/validate")
 def validate_degree(request: ValidateRequest) -> ValidateResponse:
+    global current_old_solver, current_new_solver
+    # Reset solvers when a new validation is requested
+    current_old_solver = None
+    current_new_solver = None
     """
     Validate a course plan against degree requirements.
     
@@ -364,8 +416,8 @@ def validate_degree(request: ValidateRequest) -> ValidateResponse:
         )
         
         # Create solvers based on requirement_version and degree
-        old_solver = None
-        new_solver = None
+        old_solver: Any = None
+        new_solver: Any = None
 
         request.courses = schedule_fetcher.fix_1970_courses(request.courses)
         
@@ -462,6 +514,10 @@ def validate_degree(request: ValidateRequest) -> ValidateResponse:
                 (response.old_result != None and response.old_result["valid"]) or
                 (response.new_result != None and response.new_result["valid"])
             )
+            
+            # Store solvers globally for alternative generation
+            current_old_solver = old_solver
+            current_new_solver = new_solver
         
         except Exception as e:
             response.error = f"Validation failed: {str(e)}"

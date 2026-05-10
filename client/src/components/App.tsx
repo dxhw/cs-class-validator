@@ -61,6 +61,9 @@ export default function App() {
   const [errorMsg, setErrorMsg] = useState<string>("");
   const [currentOldIndex, setCurrentOldIndex] = useState<number>(0);
   const [currentNewIndex, setCurrentNewIndex] = useState<number>(0);
+  const [generatingAlternative, setGeneratingAlternative] = useState<boolean>(false);
+  const [oldAlternativeExhausted, setOldAlternativeExhausted] = useState<boolean>(false);
+  const [newAlternativeExhausted, setNewAlternativeExhausted] = useState<boolean>(false);
 
   // Static options based on your server.py
   const degrees = ["CS", "CompBio", "CS+ECON", "MATH+CS", "APMA+CS"];
@@ -173,6 +176,8 @@ export default function App() {
     e.preventDefault();
     setLoading(true);
     setErrorMsg("");
+    setOldAlternativeExhausted(false);
+    setNewAlternativeExhausted(false);
     setResponse(null);
 
     const payload: ValidateRequest = {
@@ -208,6 +213,75 @@ export default function App() {
     }
   };
 
+  const handleGenerateAlternative = async (
+    isOld: boolean,
+  ) => {
+    if (!response) return;
+
+    setGeneratingAlternative(true);
+    setErrorMsg("");
+
+    try {
+      const res = await fetch(
+        `${API_BASE}/generate-alternative?solver=${isOld ? "old" : "new"}`,
+        {
+          method: "POST",
+        },
+      );
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(
+          data.detail || "Failed to generate alternative placement",
+        );
+      }
+
+      if (!data.success) {
+        if (isOld) {
+          setOldAlternativeExhausted(true);
+        } else {
+          setNewAlternativeExhausted(true);
+        }
+        return;
+      }
+      if (isOld) {
+        setOldAlternativeExhausted(false);
+      } else {
+        setNewAlternativeExhausted(false);
+      }
+
+      // Merge the new results_dict with the existing response
+      setResponse((prevResponse) => {
+        if (!prevResponse) return prevResponse;
+
+        const updated = { ...prevResponse };
+
+        if (isOld) {
+          if (updated.old_result) {
+            updated.old_result.results_dict = data.results_dict;
+          }
+        } else {
+          if (updated.new_result) {
+            updated.new_result.results_dict = data.results_dict;
+          }
+        }
+
+        return updated;
+      });
+
+      // Move to the next index
+      if (isOld) {
+        setCurrentOldIndex((prev) => prev + 1);
+      } else {
+        setCurrentNewIndex((prev) => prev + 1);
+      }
+    } catch (err: any) {
+      setErrorMsg(err.message);
+    } finally {
+      setGeneratingAlternative(false);
+    }
+  };
+
   /// --- Helpers ---
   const getUnknownsText = () => {
     if (!response?.success) return null;
@@ -237,11 +311,34 @@ export default function App() {
     currentIndex: number,
     setCurrentIndex: (index: number) => void,
     result?: ValidationResultDetails,
+    isOld?: boolean,
   ) => {
     if (!result) return null;
-    const alternatives = result.results_dict ? Object.keys(result.results_dict).map(Number).sort() : [];
+    const alternatives = result.results_dict ? Object.keys(result.results_dict).map(Number).sort((a, b) => a - b) : [];
     const selectedDict = alternatives.length > 0 ? result.results_dict![currentIndex] : undefined;
     const totalAlternatives = alternatives.length;
+    const isLastAlternative = currentIndex === totalAlternatives - 1;
+
+    const hasUnknowns = result.unknowns > 0;
+    const isExhausted = isOld ? oldAlternativeExhausted : newAlternativeExhausted;
+    const handleNextClick = async () => {
+      if (isLastAlternative && isOld !== undefined) {
+        // Try to generate a new alternative
+        await handleGenerateAlternative(isOld);
+      } else {
+        // Just move to the next existing alternative
+        setCurrentIndex(Math.min(totalAlternatives - 1, currentIndex + 1));
+      }
+    };
+
+    const showPrevious = hasUnknowns;
+    const showNextButton = hasUnknowns;
+    const showNavigation = hasUnknowns;
+    const disablePrevious = currentIndex === 0;
+    const disableNext =
+      generatingAlternative ||
+      (isLastAlternative && isExhausted);
+
     return (
       <div
         style={{
@@ -255,23 +352,31 @@ export default function App() {
           {title}
           {totalAlternatives > 1 && ` (Alternative ${currentIndex + 1}/${totalAlternatives})`}
         </h3>
-        {totalAlternatives > 1 && (
-          <div style={{ marginBottom: "1rem" }}>
-            <button
-              onClick={() => setCurrentIndex(Math.max(0, currentIndex - 1))}
-              disabled={currentIndex === 0}
-              style={{ marginRight: "0.5rem" }}
-            >
-              Previous
-            </button>
-            <button
-              onClick={() => setCurrentIndex(Math.min(totalAlternatives - 1, currentIndex + 1))}
-              disabled={currentIndex === totalAlternatives - 1}
-            >
-              Next
-            </button>
-          </div>
-        )}
+          {showNavigation && (
+            <div style={{ marginBottom: "1rem", display: "flex", alignItems: "center", gap: "1rem" }}>
+              <div style={{ display: "flex", gap: "0.5rem" }}>
+                <button
+                  onClick={() => setCurrentIndex(Math.max(0, currentIndex - 1))}
+                  disabled={disablePrevious}
+                >
+                  Previous
+                </button>
+                <button
+                  onClick={handleNextClick}
+                  disabled={disableNext}
+                >
+                  {isLastAlternative && generatingAlternative
+                    ? "Generating..."
+                    : "Next"}
+                </button>
+              </div>
+              {isExhausted && isLastAlternative && (
+                <span style={{ color: "#856404", fontStyle: "italic" }}>
+                  Out of alternatives
+                </span>
+              )}
+            </div>
+          )}
         <p>
           <strong>Status:</strong> {result.valid ? "✅ Valid" : "❌ Invalid"}
         </p>
@@ -349,7 +454,7 @@ export default function App() {
                   typeof reqData === "object" &&
                   !Array.isArray(reqData)
                 ) {
-                  const foundationsData = reqData as Record<string, string>;
+                  const foundationsData = reqData as unknown as Record<string, string>;
                   const foundationCategories = Object.keys(foundationsData);
 
                   return (
@@ -881,12 +986,14 @@ export default function App() {
                 currentNewIndex,
                 setCurrentNewIndex,
                 response.new_result,
+                false,
               )}
               {renderResultDetails(
                 "Old Version Requirements",
                 currentOldIndex,
                 setCurrentOldIndex,
                 response.old_result,
+                true,
               )}
             </div>
           )}

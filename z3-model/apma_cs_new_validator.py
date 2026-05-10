@@ -84,9 +84,9 @@ class NewAPMACS():
                 alternatives_limit = 5
                 if unknowns <= 4:
                     alternatives_limit = 15
-                self.__generate_unknown_alternatives(alternatives_limit)
+                if self.printing:
+                    self.__generate_unknown_alternatives(alternatives_limit)
 
-            self.s.pop()
         else:
             self.__my_print(f"cannot form a valid {degree_type} degree")
             self.s.pop()
@@ -188,7 +188,6 @@ class NewAPMACS():
                     self.__my_print(f"- {actual_count} Unknown(s) filling requirement: {req}")
 
             self.__print_results()
-            self.__fill_results_dict(count - 1)
 
             # 2. Block this specific numerical distribution and loop again
             if unknowns_used:
@@ -204,6 +203,44 @@ class NewAPMACS():
             self.__my_print(f"hit unknown placement limit")
         self.__my_print(f"{count} alternative placements found")
         self.__my_print("done!")
+
+    def generate_alternative(self) -> bool:
+        results_dict_index = len(self.results_dict)
+        
+        # Get active requirements
+        active_reqs = [req for req, is_active in self.constraint_dict.items() if is_active]
+
+        # Get a static list of the unknown courses
+        unknown_courses = [c for c in self.courses if c.startswith("Unknown")]
+            
+        # This list will hold equations defining the CURRENT distribution of Unknowns.
+        # e.g., [Sum(Unknowns in intro) == 1, Sum(Unknowns in pathways) == 1, ...]
+        current_distribution_equations = []
+
+        # 1. Check the main requirement buckets
+        for req in active_reqs:
+            if req == "humanities-limit":
+                continue
+            
+            # Gather the booleans for ALL unknowns in THIS specific requirement
+            unknowns_in_this_req = [If(self.assignment_vars[c][req], 1, 0) for c in unknown_courses]
+            
+            # Create a Z3 expression for the sum
+            sum_expr = Sum(*([0] + unknowns_in_this_req))
+            
+            # Evaluate the actual integer sum in the current model
+            actual_count = self.s.model().evaluate(sum_expr)
+            
+            # We enforce the exact count for THIS bucket to our signature
+            current_distribution_equations.append(sum_expr == actual_count)
+
+        self.s.add(Not(And(*current_distribution_equations)))
+        is_sat = self.s.check()
+        if is_sat == sat:
+            self.__fill_results_dict(results_dict_index)
+            return True
+        else:
+            return False
     
     ############################# CONSTRAINTS ########################################
     
