@@ -115,13 +115,18 @@ class OldCS():
         # Print the actual course assignments if satisfied
         if is_sat[0]:
             if self.results_dict == {}:
-                self.__fill_results_dict()
+                self.__fill_results_dict(0)
             if unknowns == 0:
                 self.__print_results()
             #are there unknowns involved? also print alternatives. 
             else:
                 self.__my_print(f"Found a valid course plan with {unknowns} unknown courses")
-                self.__generate_unknown_alternatives()
+                alternatives_limit = 5
+                if unknowns <= 4:
+                    alternatives_limit = 15
+                elif unknowns >= 10:
+                    alternatives_limit = 1
+                self.__generate_unknown_alternatives(alternatives_limit)
 
             self.s.pop()
         else:
@@ -221,7 +226,8 @@ class OldCS():
         if self.printing:
             print(*args, **kwargs)
 
-    def __fill_results_dict(self):
+    def __fill_results_dict(self, index: int):
+        self.results_dict[index] = {}
         active_reqs = [req for req, is_active in self.constraint_dict.items() if is_active]
         m = self.s.model()
         all_used_courses = []
@@ -236,11 +242,11 @@ class OldCS():
             
             # Populate dictionary EXCEPT for pathways
             if req != "pathways":
-                self.results_dict[req] = used_courses
+                self.results_dict[index][req] = used_courses
 
         # --- Structured Pathways Dictionary ---
         if "pathways" in active_reqs:
-            self.results_dict["pathways"] = {}
+            self.results_dict[index]["pathways"] = {}
             pathway_requirements = self.reader.get_pathways()
             
             for pathway in pathway_requirements:
@@ -289,7 +295,7 @@ class OldCS():
                                 break
                                 
                     # Fill the dictionary for this specific pathway
-                    self.results_dict["pathways"][p_name] = {
+                    self.results_dict[index]["pathways"][p_name] = {
                         "Core": core_course,
                         "Additional": additional_course,
                         "Intermediates": intermediates_used
@@ -301,7 +307,7 @@ class OldCS():
         
         # Use a set to remove duplicates (in case a humanity was used in multiple buckets)
         unique_humanities = list(set(humanities_included_in_degree))
-        self.results_dict["humanities courses used in degree"] = unique_humanities
+        self.results_dict[index]["humanities courses used in degree"] = unique_humanities
 
         
     ################################### UNKNOWN HANDLING #######################################
@@ -443,6 +449,7 @@ class OldCS():
                                 self.__my_print(f"  -> {actual_count_int} Unknown(s) specifically in '{p_name}' intermediate prereq {idx+1}")
                 
             self.__print_results()
+            self.__fill_results_dict(count - 1)
 
             # 3. Block this specific numerical distribution and loop again
             if unknowns_used:

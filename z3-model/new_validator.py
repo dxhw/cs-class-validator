@@ -64,13 +64,16 @@ class NewCS():
         # Print the actual course assignments if satisfied
         if is_sat[0]:
             if self.results_dict == {}:
-                self.__fill_results_dict()
+                self.__fill_results_dict(0)
             if unknowns == 0:
                 self.__print_results()
             #are there unknowns involved? also print alternatives. 
             else:
                 self.__my_print(f"Found a valid course plan with {unknowns} unknown courses")
-                self.__generate_unknown_alternatives()
+                alternatives_limit = 5
+                if unknowns <= 4:
+                    alternatives_limit = 15
+                self.__generate_unknown_alternatives(alternatives_limit)
 
             self.s.pop()
         else:
@@ -122,7 +125,8 @@ class NewCS():
         if self.printing:
             print(*args, **kwargs)
 
-    def __fill_results_dict(self):
+    def __fill_results_dict(self, index: int):
+        self.results_dict[index] = {}
         active_reqs = [req for req, is_active in self.constraint_dict.items() if is_active]
         m = self.s.model()
         all_used_courses = []
@@ -137,9 +141,9 @@ class NewCS():
             
             # Populate dictionary EXCEPT for foundations
             if req != "foundations":
-                self.results_dict[req] = used_courses
+                self.results_dict[index][req] = used_courses
             elif req == "foundations":
-                self.results_dict["foundations"] = {}
+                self.results_dict[index]["foundations"] = {}
                 foundations_requirements = self.reader.get_new_foundations()
                 unknowns_used_for_foundations = [c for c in used_courses if c.startswith("Unknown")]
                 
@@ -150,7 +154,7 @@ class NewCS():
                         course_used_for_category = [unknowns_used_for_foundations.pop()]
                         
                     # Map the foundation category name to the chosen course
-                    self.results_dict["foundations"][foundations_category['Category']] = course_used_for_category[0]
+                    self.results_dict[index]["foundations"][foundations_category['Category']] = course_used_for_category[0]
 
         # --- Humanities Dictionary ---
         humanities_list = self.reader.get_humanities_courses()
@@ -158,7 +162,7 @@ class NewCS():
         
         # Use a set to remove duplicates (in case a humanity was used in multiple buckets)
         unique_humanities = list(set(humanities_included_in_degree))
-        self.results_dict["humanities courses used in degree"] = unique_humanities
+        self.results_dict[index]["humanities courses used in degree"] = unique_humanities
     
     ################################### UNKNOWN HANDLING #######################################
     
@@ -219,7 +223,7 @@ class NewCS():
                     unknowns_used = True
                     self.__my_print(f"- {actual_count} Unknown(s) filling requirement: {req}")
 
-            self.__print_results()
+            self.__fill_results_dict(count - 1)
 
             # 2. Block this specific numerical distribution and loop again
             if unknowns_used:

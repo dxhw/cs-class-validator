@@ -94,13 +94,16 @@ class NewCSEcon():
         # Print the actual course assignments if satisfied
         if is_sat[0]:
             if self.results_dict == {}:
-                self.__fill_results_dict()
+                self.__fill_results_dict(0)
             if unknowns == 0:
                 self.__print_results()
             #are there unknowns involved? also print alternatives. 
             else:
                 self.__my_print(f"Found a valid course plan with {unknowns} unknown courses")
-                self.__generate_unknown_alternatives()
+                alternatives_limit = 5
+                if unknowns <= 4:
+                    alternatives_limit = 15
+                self.__generate_unknown_alternatives(alternatives_limit)
 
             self.s.pop()
         else:
@@ -132,7 +135,8 @@ class NewCSEcon():
             #just print everything as a standard list
             self.__my_print(f"{req}: {used_courses}")
 
-    def __fill_results_dict(self):
+    def __fill_results_dict(self, index: int):
+        self.results_dict[index] = {}
         active_reqs = [req for req, is_active in self.constraint_dict.items() if is_active]
         m = self.s.model()
         all_used_courses = []
@@ -146,7 +150,7 @@ class NewCSEcon():
             all_used_courses.extend(used_courses)
 
             # Assign the standard list to the dictionary
-            self.results_dict[req] = used_courses
+            self.results_dict[index][req] = used_courses
 
     def __my_print(self, *args, **kwargs):
         if self.printing:
@@ -209,6 +213,7 @@ class NewCSEcon():
                     self.__my_print(f"- {actual_count} Unknown(s) filling requirement: {req}")
 
             self.__print_results()
+            self.__fill_results_dict(count - 1)
 
             # 2. Block this specific numerical distribution and loop again
             if unknowns_used:

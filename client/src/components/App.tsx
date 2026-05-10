@@ -22,9 +22,7 @@ interface PathwayDetails {
 interface ValidationResultDetails {
   valid: boolean;
   unknowns: number;
-  results_dict?:
-    | Record<string, string[] | Record<string, PathwayDetails>>
-    | Record<string, string>;
+  results_dict?: Record<number, Record<string, string[] | Record<string, PathwayDetails>>>;
 }
 
 interface ValidateResponse {
@@ -56,15 +54,18 @@ export default function App() {
   const [newConstraints, setNewConstraints] = useState<Record<string, boolean>>(
     {},
   );
-
+  
   // --- UI/Result State ---
   const [loading, setLoading] = useState<boolean>(false);
   const [response, setResponse] = useState<ValidateResponse | null>(null);
   const [errorMsg, setErrorMsg] = useState<string>("");
+  const [currentOldIndex, setCurrentOldIndex] = useState<number>(0);
+  const [currentNewIndex, setCurrentNewIndex] = useState<number>(0);
 
   // Static options based on your server.py
   const degrees = ["CS", "CompBio", "CS+ECON", "MATH+CS", "APMA+CS"];
-  const degreeTypes = ["AB", "SCB"];
+  const availableDegreeTypes = 
+    degree === "MATH+CS" || degree === "APMA+CS" ? ["SCB"] : ["AB", "SCB"];
   const availableVersions =
     degree === "CS" ? ["Old", "New", "Either"] : ["New"];
 
@@ -109,6 +110,12 @@ export default function App() {
       setReqVersion("New");
     }
   }, [degree, reqVersion]);
+
+  useEffect(() => {
+    if ((degree === "MATH+CS" || degree === "APMA+CS") && degreeType !== "SCB") {
+      setDegreeType("SCB");
+    }
+  }, [degree, degreeType]);
 
   // --- Handlers ---
   // Handlers for toggling specific constraints
@@ -192,6 +199,8 @@ export default function App() {
         throw new Error(data.detail || "Failed to validate degree plan");
       }
       setResponse(data);
+      setCurrentOldIndex(0);
+      setCurrentNewIndex(0);
     } catch (err: any) {
       setErrorMsg(err.message);
     } finally {
@@ -225,9 +234,14 @@ export default function App() {
   /// --- Render Helpers ---
   const renderResultDetails = (
     title: string,
+    currentIndex: number,
+    setCurrentIndex: (index: number) => void,
     result?: ValidationResultDetails,
   ) => {
     if (!result) return null;
+    const alternatives = result.results_dict ? Object.keys(result.results_dict).map(Number).sort() : [];
+    const selectedDict = alternatives.length > 0 ? result.results_dict![currentIndex] : undefined;
+    const totalAlternatives = alternatives.length;
     return (
       <div
         style={{
@@ -237,16 +251,36 @@ export default function App() {
           borderRadius: "8px",
         }}
       >
-        <h3>{title}</h3>
+        <h3>
+          {title}
+          {totalAlternatives > 1 && ` (Alternative ${currentIndex + 1}/${totalAlternatives})`}
+        </h3>
+        {totalAlternatives > 1 && (
+          <div style={{ marginBottom: "1rem" }}>
+            <button
+              onClick={() => setCurrentIndex(Math.max(0, currentIndex - 1))}
+              disabled={currentIndex === 0}
+              style={{ marginRight: "0.5rem" }}
+            >
+              Previous
+            </button>
+            <button
+              onClick={() => setCurrentIndex(Math.min(totalAlternatives - 1, currentIndex + 1))}
+              disabled={currentIndex === totalAlternatives - 1}
+            >
+              Next
+            </button>
+          </div>
+        )}
         <p>
           <strong>Status:</strong> {result.valid ? "✅ Valid" : "❌ Invalid"}
         </p>
 
-        {result.results_dict && Object.keys(result.results_dict).length > 0 && (
+        {selectedDict && Object.keys(selectedDict).length > 0 && (
           <div>
             <h4>Requirement Breakdown:</h4>
             <ul style={{ lineHeight: "1.6" }}>
-              {Object.entries(result.results_dict).map(([reqName, reqData]) => {
+              {Object.entries(selectedDict).map(([reqName, reqData]) => {
                 // 1. Handle the nested "pathways" dictionary
                 if (
                   reqName === "pathways" &&
@@ -419,7 +453,7 @@ export default function App() {
               onChange={(e) => setDegreeType(e.target.value)}
               style={{ display: "block", width: "100%" }}
             >
-              {degreeTypes.map((t) => (
+              {availableDegreeTypes.map((t) => (
                 <option key={t} value={t}>
                   {t}
                 </option>
@@ -844,10 +878,14 @@ export default function App() {
 
               {renderResultDetails(
                 "New Version Requirements",
+                currentNewIndex,
+                setCurrentNewIndex,
                 response.new_result,
               )}
               {renderResultDetails(
                 "Old Version Requirements",
+                currentOldIndex,
+                setCurrentOldIndex,
                 response.old_result,
               )}
             </div>

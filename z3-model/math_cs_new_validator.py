@@ -103,13 +103,18 @@ class NewMATHCS():
         # Print the actual course assignments if satisfied
         if is_sat[0]:
             if self.results_dict == {}:
-                self.__fill_results_dict()
+                self.__fill_results_dict(0)
             if unknowns == 0:
                 self.__print_results()
             #are there unknowns involved? also print alternatives. 
             else:
                 self.__my_print(f"Found a valid course plan with {unknowns} unknown courses")
-                self.__generate_unknown_alternatives()
+                alternatives_limit = 3
+                if unknowns <= 3:
+                    alternatives_limit = 15
+                elif unknowns >= 10:
+                    alternatives_limit = 1
+                self.__generate_unknown_alternatives(alternatives_limit)
 
             self.s.pop()
         else:
@@ -146,7 +151,8 @@ class NewMATHCS():
         unique_humanities = list(set(humanities_included_in_degree))
         self.__my_print(f"humanities courses used in degree: {unique_humanities}")
 
-    def __fill_results_dict(self):
+    def __fill_results_dict(self, index: int):
+        self.results_dict[index] = {}
         active_reqs = [req for req, is_active in self.constraint_dict.items() if is_active]
         m = self.s.model()
         all_used_courses = []
@@ -160,7 +166,7 @@ class NewMATHCS():
             all_used_courses.extend(used_courses)
 
             # Assign the standard list to the dictionary
-            self.results_dict[req] = used_courses
+            self.results_dict[index][req] = used_courses
 
     def __my_print(self, *args, **kwargs):
         if self.printing:
@@ -222,6 +228,7 @@ class NewMATHCS():
                     self.__my_print(f"- {actual_count} Unknown(s) filling requirement: {req}")
 
             self.__print_results()
+            self.__fill_results_dict(count - 1)
 
             # 2. Block this specific numerical distribution and loop again
             if unknowns_used:
